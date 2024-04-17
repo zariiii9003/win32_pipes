@@ -34,7 +34,15 @@ NB_MODULE(_ext, m)
         .def("recv_bytes", &PipeConnection::RecvBytes)
         .def_prop_ro("closed", &PipeConnection::GetClosed)
         .def_prop_ro("readable", &PipeConnection::GetReadable)
-        .def_prop_ro("writable", &PipeConnection::GetWritable);
+        .def_prop_ro("writable", &PipeConnection::GetWritable)
+        .def("__enter__", [](PipeConnection &pc) { return &pc; })
+        .def(
+            "__exit__",
+            [](PipeConnection &pc, nanobind::handle, nanobind::handle, nanobind::handle) { pc.Close(); },
+            "exc_type"_a.none(),
+            "exc_value"_a.none(),
+            "traceback"_a.none());
+
     m.def("Pipe", &Pipe, "duplex"_a = true);
 
 #ifdef VERSION_INFO

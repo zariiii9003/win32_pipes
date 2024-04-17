@@ -1,6 +1,9 @@
+from contextlib import AbstractContextManager
+from types import TracebackType
+
 __version__: str
 
-class PipeConnection:
+class PipeConnection(AbstractContextManager[PipeConnection]):
     def __init__(
         self, handle: int, readable: bool = True, writable: bool = True
     ) -> None: ...
@@ -16,5 +19,12 @@ class PipeConnection:
     def writable(self) -> bool: ...
     @property
     def closed(self) -> bool: ...
+    def __enter__(self) -> PipeConnection: ...
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None: ...
 
 def Pipe(duplex: bool = True) -> tuple[PipeConnection, PipeConnection]: ...
