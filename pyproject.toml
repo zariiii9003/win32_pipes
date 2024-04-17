@@ -32,5 +32,6 @@ dev = [
 
 [tool.cibuildwheel]
 test-requires = "pytest"
-test-command = "pytest {project}/tests"
+test-command = "pytest --no-header -vv {project}/tests"
 build-frontend = "build"
+skip = "pp*"
