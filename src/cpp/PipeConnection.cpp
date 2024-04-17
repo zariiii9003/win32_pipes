@@ -20,7 +20,7 @@ PipeConnection::PipeConnection(const size_t handle,
 
     _completionPort = CreateIoCompletionPort(_handle, nullptr, 0, 0);
     if (_completionPort == NULL)
-        Win32ErrorExit();
+        CleanupAndThrow();
 
     _thread = std::thread(&PipeConnection::MonitorIoCompletion, this);
 };
@@ -30,10 +30,20 @@ auto PipeConnection::Close() -> void
 {
     if (!_closed) {
         _closed = true;
+
+        // close handles
         CloseHandle(_handle);
         CloseHandle(_completionPort);
+
+        // wait until thread stops
         if (_thread.joinable())
             _thread.join();
+
+        // release queued buffers
+        while (!_TxQueue.empty()) {
+            delete _TxQueue.front();
+            _TxQueue.pop();
+        }
     }
 }
 
@@ -57,8 +67,7 @@ auto PipeConnection::SendBytes(const nanobind::bytes       buffer,
     if (!_writable)
         throw std::exception("connection is read-only");
 
-    if (_threadErr != ERROR_SUCCESS)
-        Win32ErrorExit(_threadErr);
+    CheckThread();
 
     auto bufferLength = buffer.size();
     if (bufferLength <= offset)
@@ -88,7 +97,7 @@ auto PipeConnection::SendBytes(const nanobind::bytes       buffer,
             case ERROR_IO_INCOMPLETE:
                 break;
             default:
-                Win32ErrorExit();
+                CleanupAndThrow();
         }
     }
 }
@@ -100,8 +109,7 @@ auto PipeConnection::RecvBytes() -> std::optional<nanobind::bytes>
     if (!_readable)
         throw std::exception("connection is write-only");
 
-    if (_threadErr != ERROR_SUCCESS)
-        Win32ErrorExit(_threadErr);
+    CheckThread();
 
     // Get RxQueue content and release lock asap. Return if empty.
     std::vector<char> *rxMessage;
@@ -232,6 +240,18 @@ auto PipeConnection::MonitorIoCompletion() -> void
 threadExit:
     _threadErr = GetLastError();
 };
+
+inline auto PipeConnection::CheckThread() -> void
+{
+    if (_threadErr != ERROR_SUCCESS)
+        CleanupAndThrow(_threadErr);
+}
+
+auto PipeConnection::CleanupAndThrow(DWORD errNo) -> void
+{
+    Close();
+    Win32ErrorExit(errNo);
+}
 
 auto OverlappedData::allocate(const size_t len) -> OverlappedData *
 {

@@ -64,7 +64,9 @@ class PipeConnection {
     std::queue<std::vector<char> *> _RxQueue;
     std::mutex                      _RxQueueMutex;
 
-    void MonitorIoCompletion();
+    void        MonitorIoCompletion();
+    inline void CheckThread();
+    void        CleanupAndThrow(DWORD errNo = 0);
 };
 
 #endif
