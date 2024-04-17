@@ -11,7 +11,6 @@
 #include "./util.h"
 
 #define STRINGIFY(x) #x
-#define MACRO_STRINGIFY(x) STRINGIFY(x)
 
 using namespace nanobind::literals;
 
@@ -47,7 +46,7 @@ NB_MODULE(_ext, m)
     m.def("Pipe", &Pipe, "duplex"_a = true);
 
 #ifdef VERSION_INFO
-    m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
+    m.attr("__version__") = STRINGIFY(VERSION_INFO);
 #else
     m.attr("__version__") = "dev";
 #endif

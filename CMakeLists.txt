@@ -15,6 +15,9 @@ find_package(
   Python 3.8 REQUIRED
   COMPONENTS Interpreter Development.Module
   OPTIONAL_COMPONENTS Development.SABIModule)
+
+# Detect the installed nanobind package and import it into CMake
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/nanobind)
 find_package(nanobind CONFIG REQUIRED)
 
 nanobind_add_module(
