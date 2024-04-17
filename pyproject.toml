@@ -35,3 +35,7 @@ test-requires = "pytest"
 test-command = "pytest --no-header -vv {project}/tests"
 build-frontend = "build"
 skip = "pp*"
+
+[tool.pytest.ini_options]
+addopts = "--no-header -vv -rP"
+testpaths = ["tests"]
