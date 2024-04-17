@@ -52,7 +52,7 @@ auto AnsiToUtf8(const char *ansiString) -> std::string
 extern void Win32ErrorExit(DWORD errNo)
 {
     DWORD _errNo = errNo == 0 ? GetLastError() : errNo;
-    if (errNo != ERROR_SUCCESS) {
+    if (_errNo != ERROR_SUCCESS) {
         DWORD n;
         CHAR  msgBuf[1000]{0};
 
