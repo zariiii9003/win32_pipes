@@ -140,7 +140,6 @@ auto PipeConnection::MonitorIoCompletion() -> void
 
         if (pOv == &rxOv) {
             // receive operation completed
-            size_t msgSize = static_cast<size_t>(numberOfBytesTransferred);
             auto ovRes = GetOverlappedResult(_handle, pOv, &numberOfBytesTransferred, false);
             bytesReadTotal += static_cast<size_t>(numberOfBytesTransferred);
 
@@ -167,7 +166,7 @@ auto PipeConnection::MonitorIoCompletion() -> void
             }
 
             // create new vector, which will be saved in RxQueue
-            auto rxMessageOut = new std::vector<char>(bytesReadTotal);
+            auto rxMessageOut = new std::vector<char>(BUFSIZE);
             rxMessageOut->swap(_RxBuffer);
             rxMessageOut->resize(bytesReadTotal);
             bytesReadTotal = 0; // reset bytesReadTotal
@@ -177,7 +176,7 @@ auto PipeConnection::MonitorIoCompletion() -> void
             _RxQueue.push(rxMessageOut);
 
             // start next receive operation
-            if (!ReadFile(_handle, &_RxBuffer.front(), BUFSIZE, nullptr, &rxOv))
+            if (!ReadFile(_handle, &_RxBuffer.front(), _RxBuffer.size(), nullptr, &rxOv))
                 Win32ErrorExit();
         }
         else {
