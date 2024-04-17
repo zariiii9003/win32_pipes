@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: MIT */
 
 #include "./util.h"
-#include <iostream>
 #include <stdexcept>
 
 // Convert ANSI string to UTF-8
@@ -65,7 +64,6 @@ extern void Win32ErrorExit(DWORD errNo)
                           sizeof(msgBuf),
                           nullptr);
         auto errMsg = AnsiToUtf8(msgBuf);
-        std::cout << errMsg << std::endl;
         throw std::runtime_error(errMsg.c_str());
     }
 };
