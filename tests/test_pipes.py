@@ -99,3 +99,30 @@ def test_context_manager():
 
     assert rx.closed
     assert tx.closed
+
+
+def test_broken_pipe_rx():
+    rx, tx = win_pipes.Pipe(False)
+
+    print(f"Closing {tx.fileno()=}, expecting error in {rx.fileno()=}")
+    tx.close()
+    time.sleep(0.001)
+    with pytest.raises(RuntimeError):
+        rx.recv_bytes()
+
+    rx.close()
+    assert rx.closed
+    assert tx.closed
+
+
+def test_broken_pipe_tx():
+    rx, tx = win_pipes.Pipe(False)
+
+    print(f"Closing {rx.fileno()=}, expecting error in {tx.fileno()=}")
+    rx.close()
+    with pytest.raises(RuntimeError):
+        tx.send_bytes(b"data")
+
+    tx.close()
+    assert rx.closed
+    assert tx.closed

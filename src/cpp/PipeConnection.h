@@ -58,6 +58,7 @@ class PipeConnection {
     std::queue<OverlappedData *>    _TxQueue;
     std::mutex                      _TxQueueMutex;
     std::thread                     _thread;
+    DWORD                           _threadErr{0};
     OVERLAPPED                      rxOv{0};
     std::vector<char>               _RxBuffer{0};
     std::queue<std::vector<char> *> _RxQueue;

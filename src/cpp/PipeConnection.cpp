@@ -30,8 +30,8 @@ auto PipeConnection::Close() -> void
 {
     if (!_closed) {
         _closed = true;
-        CloseHandle(_completionPort);
         CloseHandle(_handle);
+        CloseHandle(_completionPort);
         if (_thread.joinable())
             _thread.join();
     }
@@ -56,6 +56,9 @@ auto PipeConnection::SendBytes(const nanobind::bytes       buffer,
         throw std::exception("handle is closed");
     if (!_writable)
         throw std::exception("connection is read-only");
+
+    if (_threadErr != ERROR_SUCCESS)
+        Win32ErrorExit(_threadErr);
 
     auto bufferLength = buffer.size();
     if (bufferLength <= offset)
@@ -97,6 +100,9 @@ auto PipeConnection::RecvBytes() -> std::optional<nanobind::bytes>
     if (!_readable)
         throw std::exception("connection is write-only");
 
+    if (_threadErr != ERROR_SUCCESS)
+        Win32ErrorExit(_threadErr);
+
     // Get RxQueue content and release lock asap. Return if empty.
     std::vector<char> *rxMessage;
     {
@@ -122,29 +128,34 @@ auto PipeConnection::MonitorIoCompletion() -> void
         // initialize read buffer
         _RxBuffer.resize(static_cast<size_t>(BUFSIZE));
         // start first read operation
-        if (!ReadFile(_handle, &_RxBuffer.front(), BUFSIZE, nullptr, &rxOv))
-            Win32ErrorExit();
+        if (!ReadFile(_handle,
+                      &_RxBuffer.front(),
+                      _RxBuffer.size(),
+                      nullptr,
+                      &rxOv)) {
+            auto errNo = GetLastError();
+            if (errNo != ERROR_IO_PENDING)
+                goto threadExit;
+        }
     }
 
     while (!_closed) {
         // wait for completed operation
         DWORD        numberOfBytesTransferred{0};
-        LPOVERLAPPED pOv = nullptr;
-        if (!GetQueuedCompletionStatus(_completionPort,
-                                       &numberOfBytesTransferred,
-                                       &completionKey,
-                                       &pOv,
-                                       INFINITE)) {
+        LPOVERLAPPED pOv     = nullptr;
+        auto         gqcsRes = GetQueuedCompletionStatus(_completionPort,
+                                                 &numberOfBytesTransferred,
+                                                 &completionKey,
+                                                 &pOv,
+                                                 INFINITE);
+        if (!gqcsRes) {
             DWORD errNo = GetLastError();
             switch (errNo) {
                 case ERROR_SUCCESS:
                 case ERROR_MORE_DATA:
                     break;
-                case ERROR_ABANDONED_WAIT_0:
-                case ERROR_BROKEN_PIPE:
-                    return;
                 default:
-                    Win32ErrorExit(errNo);
+                    goto threadExit;
             }
         };
 
@@ -180,11 +191,11 @@ auto PipeConnection::MonitorIoCompletion() -> void
                                   bytesLeftThisMessage,
                                   nullptr,
                                   &rxOv))
-                        Win32ErrorExit();
+                        goto threadExit;
                     continue;
                 }
                 else
-                    Win32ErrorExit();
+                    goto threadExit;
             }
 
             // create new vector, which will be saved in RxQueue
@@ -197,13 +208,17 @@ auto PipeConnection::MonitorIoCompletion() -> void
             std::scoped_lock lock(_RxQueueMutex);
             _RxQueue.push(rxMessageOut);
 
-            // start next receive operation
+            // reset rxOv and start next receive operation
+            rxOv = OVERLAPPED{0};
             if (!ReadFile(_handle,
                           &_RxBuffer.front(),
                           _RxBuffer.size(),
                           nullptr,
-                          &rxOv))
-                Win32ErrorExit();
+                          &rxOv)) {
+                auto errNo = GetLastError();
+                if (errNo != ERROR_IO_PENDING)
+                    goto threadExit;
+            }
         }
         else {
             // send operation completed
@@ -212,10 +227,10 @@ auto PipeConnection::MonitorIoCompletion() -> void
                 delete _TxQueue.front();
                 _TxQueue.pop();
             }
-            else {
-            }
         }
     }
+threadExit:
+    _threadErr = GetLastError();
 };
 
 auto OverlappedData::allocate(const size_t len) -> OverlappedData *
