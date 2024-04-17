@@ -195,7 +195,7 @@ auto PipeConnection::MonitorIoCompletion() -> void
                     // Reset OVERLAPPED and read the rest of the message
                     rxOv = OVERLAPPED{0};
                     if (!ReadFile(_handle,
-                                  &_RxBuffer[bytesReadTotal],
+                                  &_RxBuffer.at(bytesReadTotal),
                                   bytesLeftThisMessage,
                                   nullptr,
                                   &rxOv))
