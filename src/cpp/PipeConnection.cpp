@@ -7,11 +7,16 @@
 #include "./PipeConnection.h"
 #include "./util.h"
 
-PipeConnection::PipeConnection(const size_t handle, const bool readable, const bool writable)
-    : _handle{reinterpret_cast<const HANDLE>(handle)}, _readable{readable}, _writable{writable}
+PipeConnection::PipeConnection(const size_t handle,
+                               const bool   readable,
+                               const bool   writable)
+    : _handle{reinterpret_cast<const HANDLE>(handle)},
+      _readable{readable},
+      _writable{writable}
 {
     if (!readable && !writable)
-        throw nanobind::value_error("at least one of `readable` and `writable` must be True");
+        throw nanobind::value_error(
+            "at least one of `readable` and `writable` must be True");
 
     _completionPort = CreateIoCompletionPort(_handle, nullptr, 0, 0);
     if (_completionPort == NULL)
@@ -32,7 +37,10 @@ auto PipeConnection::Close() -> void
     }
 }
 
-auto PipeConnection::GetHandle() const -> size_t { return reinterpret_cast<size_t>(_handle); }
+auto PipeConnection::GetHandle() const -> size_t
+{
+    return reinterpret_cast<size_t>(_handle);
+}
 
 auto PipeConnection::GetReadable() const -> bool { return _readable; }
 
@@ -40,10 +48,9 @@ auto PipeConnection::GetWritable() const -> bool { return _writable; }
 
 auto PipeConnection::GetClosed() -> bool { return _closed; }
 
-auto PipeConnection::SendBytes(
-    const nanobind::bytes buffer,
-    const size_t offset,
-    const std::optional<size_t> size) -> void
+auto PipeConnection::SendBytes(const nanobind::bytes       buffer,
+                               const size_t                offset,
+                               const std::optional<size_t> size) -> void
 {
     if (_closed)
         throw std::exception("handle is closed");
@@ -73,12 +80,12 @@ auto PipeConnection::SendBytes(
     if (!WriteFile(_handle, &pOd->vector.front(), _size, 0, &pOd->overlapped)) {
         auto errNo = GetLastError();
         switch (errNo) {
-        case ERROR_SUCCESS:
-        case ERROR_IO_PENDING:
-        case ERROR_IO_INCOMPLETE:
-            break;
-        default:
-            Win32ErrorExit();
+            case ERROR_SUCCESS:
+            case ERROR_IO_PENDING:
+            case ERROR_IO_INCOMPLETE:
+                break;
+            default:
+                Win32ErrorExit();
         }
     }
 }
@@ -109,7 +116,7 @@ auto PipeConnection::RecvBytes() -> std::optional<nanobind::bytes>
 auto PipeConnection::MonitorIoCompletion() -> void
 {
     ULONG_PTR completionKey{0};
-    size_t bytesReadTotal{0};
+    size_t    bytesReadTotal{0};
 
     if (_readable) {
         // initialize read buffer
@@ -121,43 +128,58 @@ auto PipeConnection::MonitorIoCompletion() -> void
 
     while (!_closed) {
         // wait for completed operation
-        DWORD numberOfBytesTransferred{0};
+        DWORD        numberOfBytesTransferred{0};
         LPOVERLAPPED pOv = nullptr;
-        if (!GetQueuedCompletionStatus(
-                _completionPort, &numberOfBytesTransferred, &completionKey, &pOv, INFINITE)) {
+        if (!GetQueuedCompletionStatus(_completionPort,
+                                       &numberOfBytesTransferred,
+                                       &completionKey,
+                                       &pOv,
+                                       INFINITE)) {
             DWORD errNo = GetLastError();
             switch (errNo) {
-            case ERROR_SUCCESS:
-            case ERROR_MORE_DATA:
-                break;
-            case ERROR_ABANDONED_WAIT_0:
-            case ERROR_BROKEN_PIPE:
-                return;
-            default:
-                Win32ErrorExit(errNo);
+                case ERROR_SUCCESS:
+                case ERROR_MORE_DATA:
+                    break;
+                case ERROR_ABANDONED_WAIT_0:
+                case ERROR_BROKEN_PIPE:
+                    return;
+                default:
+                    Win32ErrorExit(errNo);
             }
         };
 
         if (pOv == &rxOv) {
             // receive operation completed
-            auto ovRes = GetOverlappedResult(_handle, pOv, &numberOfBytesTransferred, false);
+            auto ovRes = GetOverlappedResult(_handle,
+                                             pOv,
+                                             &numberOfBytesTransferred,
+                                             false);
             bytesReadTotal += static_cast<size_t>(numberOfBytesTransferred);
 
             if (!ovRes) {
                 if (GetLastError() == ERROR_MORE_DATA) {
                     // check how much data of the message is missing
                     DWORD bytesLeftThisMessage;
-                    PeekNamedPipe(_handle, nullptr, 0, nullptr, nullptr, &bytesLeftThisMessage);
+                    PeekNamedPipe(_handle,
+                                  nullptr,
+                                  0,
+                                  nullptr,
+                                  nullptr,
+                                  &bytesLeftThisMessage);
 
                     // check if rxBuffer size is sufficient
-                    size_t msgSize = bytesReadTotal + static_cast<size_t>(bytesLeftThisMessage);
+                    size_t msgSize = bytesReadTotal +
+                                     static_cast<size_t>(bytesLeftThisMessage);
                     if (msgSize > _RxBuffer.size())
                         _RxBuffer.resize(msgSize);
 
                     // Reset OVERLAPPED and read the rest of the message
                     rxOv = OVERLAPPED{0};
-                    if (!ReadFile(
-                            _handle, &_RxBuffer[bytesReadTotal], bytesLeftThisMessage, nullptr, &rxOv))
+                    if (!ReadFile(_handle,
+                                  &_RxBuffer[bytesReadTotal],
+                                  bytesLeftThisMessage,
+                                  nullptr,
+                                  &rxOv))
                         Win32ErrorExit();
                     continue;
                 }
@@ -176,7 +198,11 @@ auto PipeConnection::MonitorIoCompletion() -> void
             _RxQueue.push(rxMessageOut);
 
             // start next receive operation
-            if (!ReadFile(_handle, &_RxBuffer.front(), _RxBuffer.size(), nullptr, &rxOv))
+            if (!ReadFile(_handle,
+                          &_RxBuffer.front(),
+                          _RxBuffer.size(),
+                          nullptr,
+                          &rxOv))
                 Win32ErrorExit();
         }
         else {
@@ -197,7 +223,9 @@ auto OverlappedData::allocate(const size_t len) -> OverlappedData *
     return new OverlappedData{OVERLAPPED{0}, std::vector<char>(len)};
 };
 
-auto OverlappedData::copy(const char *pBuffer, const size_t len) -> OverlappedData *
+auto OverlappedData::copy(const char  *pBuffer,
+                          const size_t len) -> OverlappedData *
 {
-    return new OverlappedData{OVERLAPPED{0}, std::vector<char>(pBuffer, pBuffer + len)};
+    return new OverlappedData{OVERLAPPED{0},
+                              std::vector<char>(pBuffer, pBuffer + len)};
 };

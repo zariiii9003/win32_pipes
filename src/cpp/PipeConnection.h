@@ -18,7 +18,7 @@ const DWORD BUFSIZE{8192};
 
 class OverlappedData {
   public:
-    OVERLAPPED overlapped;
+    OVERLAPPED        overlapped;
     std::vector<char> vector;
 
     static auto allocate(const size_t len) -> OverlappedData *;
@@ -27,7 +27,9 @@ class OverlappedData {
 
 class PipeConnection {
   public:
-    PipeConnection(const size_t handle, const bool readable = true, const bool writable = true);
+    PipeConnection(const size_t handle,
+                   const bool   readable = true,
+                   const bool   writable = true);
 
     auto GetHandle() const -> size_t;
 
@@ -37,10 +39,9 @@ class PipeConnection {
 
     auto GetClosed() -> bool;
 
-    auto SendBytes(
-        const nanobind::bytes buffer,
-        const size_t offset = 0,
-        const std::optional<size_t> size = {}) -> void;
+    auto SendBytes(const nanobind::bytes       buffer,
+                   const size_t                offset = 0,
+                   const std::optional<size_t> size   = {}) -> void;
 
     auto RecvBytes() -> std::optional<nanobind::bytes>;
 
@@ -49,18 +50,18 @@ class PipeConnection {
     ~PipeConnection();
 
   private:
-    const HANDLE _handle;
-    const bool _readable;
-    const bool _writable;
-    bool _closed = false;
-    HANDLE _completionPort;
-    std::queue<OverlappedData *> _TxQueue;
-    std::mutex _TxQueueMutex;
-    std::thread _thread;
-    OVERLAPPED rxOv{0};
-    std::vector<char> _RxBuffer{0};
+    const HANDLE                    _handle;
+    const bool                      _readable;
+    const bool                      _writable;
+    bool                            _closed = false;
+    HANDLE                          _completionPort;
+    std::queue<OverlappedData *>    _TxQueue;
+    std::mutex                      _TxQueueMutex;
+    std::thread                     _thread;
+    OVERLAPPED                      rxOv{0};
+    std::vector<char>               _RxBuffer{0};
     std::queue<std::vector<char> *> _RxQueue;
-    std::mutex _RxQueueMutex;
+    std::mutex                      _RxQueueMutex;
 
     void MonitorIoCompletion();
 };
