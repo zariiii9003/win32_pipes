@@ -59,6 +59,7 @@ class PipeConnection {
     std::mutex                      _TxQueueMutex;
     std::thread                     _thread;
     DWORD                           _threadErr{0};
+    std::optional<std::string>      _threadErrContext;
     OVERLAPPED                      rxOv{0};
     std::vector<char>               _RxBuffer{0};
     std::queue<std::vector<char> *> _RxQueue;
@@ -66,7 +67,8 @@ class PipeConnection {
 
     void        MonitorIoCompletion();
     inline void CheckThread();
-    void        CleanupAndThrow(DWORD errNo = 0);
+    void        CleanupAndThrow(DWORD                      errNo   = 0,
+                                std::optional<std::string> context = {});
 };
 
 #endif

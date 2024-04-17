@@ -6,9 +6,12 @@
 #define UTIL_H
 
 #include <Windows.h>
+#include <optional>
 #include <string>
 
-extern auto AnsiToUtf8(const char *ansiString) -> std::string;
-extern auto Win32ErrorExit(DWORD errNo = 0) -> void;
+extern auto AnsiFormatMessage(DWORD errNo) -> std::string;
+extern auto AnsiToUtf8(const std::string &ansiString) -> std::string;
+extern auto Win32ErrorExit(DWORD                      errNo   = 0,
+                           std::optional<std::string> context = {}) -> void;
 
 #endif

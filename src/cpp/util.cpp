@@ -3,12 +3,16 @@
 # SPDX-License-Identifier: MIT */
 
 #include "./util.h"
+#include <format>
+#include <iostream>
+#include <optional>
 #include <stdexcept>
 
 // Convert ANSI string to UTF-8
-auto AnsiToUtf8(const char *ansiString) -> std::string
+auto AnsiToUtf8(const std::string &ansiString) -> std::string
 {
-    int numWideChars = MultiByteToWideChar(CP_ACP, 0, ansiString, -1, NULL, 0);
+    int numWideChars =
+        MultiByteToWideChar(CP_ACP, 0, ansiString.c_str(), -1, NULL, 0);
     if (numWideChars == 0) {
         // Handle error
         return "";
@@ -17,9 +21,9 @@ auto AnsiToUtf8(const char *ansiString) -> std::string
     std::wstring wideString(numWideChars, L'\0');
     MultiByteToWideChar(CP_ACP,
                         0,
-                        ansiString,
+                        ansiString.c_str(),
                         -1,
-                        &wideString[0],
+                        &wideString.front(),
                         numWideChars);
 
     int numUtf8Bytes = WideCharToMultiByte(CP_UTF8,
@@ -45,25 +49,48 @@ auto AnsiToUtf8(const char *ansiString) -> std::string
                         NULL,
                         NULL);
 
-    return utf8String;
+    return std::move(utf8String);
 }
 
-extern void Win32ErrorExit(DWORD errNo)
+extern auto AnsiFormatMessage(DWORD errNo) -> std::string
+{
+    auto ansiString = std::string(256, '\0');
+    auto n          = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM |
+                               FORMAT_MESSAGE_IGNORE_INSERTS,
+                           nullptr,
+                           errNo,
+                           MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+                           &ansiString.front(),
+                           ansiString.size(),
+                           nullptr);
+
+    // remove trailing whitespace
+    while (isspace(ansiString.at(n - 1))) {
+        --n;
+    }
+    ansiString.resize(n);
+
+    return std::move(ansiString);
+}
+
+extern void Win32ErrorExit(DWORD errNo, std::optional<std::string> context)
 {
     DWORD _errNo = errNo == 0 ? GetLastError() : errNo;
     if (_errNo != ERROR_SUCCESS) {
-        DWORD n;
-        CHAR  msgBuf[1000]{0};
+        auto        ansiString = AnsiFormatMessage(_errNo);
+        auto        utf8String = AnsiToUtf8(ansiString);
+        std::string errMsg{};
 
-        n           = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM |
-                              FORMAT_MESSAGE_IGNORE_INSERTS,
-                          nullptr,
-                          _errNo,
-                          MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                          msgBuf,
-                          sizeof(msgBuf),
-                          nullptr);
-        auto errMsg = AnsiToUtf8(msgBuf);
-        throw std::runtime_error(errMsg.c_str());
+        if (context.has_value()) {
+            errMsg = std::format("{} [WinError {}: {}]",
+                                 context.value(),
+                                 _errNo,
+                                 utf8String.c_str());
+        }
+        else {
+            errMsg = std::format("[WinError {}: {}]", _errNo, utf8String);
+        }
+        std::cerr << errMsg << std::endl;
+        throw std::runtime_error(errMsg);
     }
 };

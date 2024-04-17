@@ -20,7 +20,9 @@ PipeConnection::PipeConnection(const size_t handle,
 
     _completionPort = CreateIoCompletionPort(_handle, nullptr, 0, 0);
     if (_completionPort == NULL)
-        CleanupAndThrow();
+        CleanupAndThrow(
+            0,
+            "PipeConnection::PipeConnection.CreateIoCompletionPort");
 
     _thread = std::thread(&PipeConnection::MonitorIoCompletion, this);
 };
@@ -32,8 +34,12 @@ auto PipeConnection::Close() -> void
         _closed = true;
 
         // close handles
-        CloseHandle(_handle);
-        CloseHandle(_completionPort);
+        if (!CloseHandle(_handle))
+            Win32ErrorExit(0, "PipeConnection::Close.CloseHandle(_handle)");
+        if (!CloseHandle(_completionPort))
+            Win32ErrorExit(
+                0,
+                "PipeConnection::Close.CloseHandle(_completionPort)");
 
         // wait until thread stops
         if (_thread.joinable())
@@ -97,7 +103,7 @@ auto PipeConnection::SendBytes(const nanobind::bytes       buffer,
             case ERROR_IO_INCOMPLETE:
                 break;
             default:
-                CleanupAndThrow();
+                CleanupAndThrow(errNo, "PipeConnection::SendBytes.WriteFile");
         }
     }
 }
@@ -142,8 +148,11 @@ auto PipeConnection::MonitorIoCompletion() -> void
                       nullptr,
                       &rxOv)) {
             auto errNo = GetLastError();
-            if (errNo != ERROR_IO_PENDING)
+            if (errNo != ERROR_IO_PENDING) {
+                _threadErrContext =
+                    "PipeConnection::MonitorIoCompletion.ReadFile";
                 goto threadExit;
+            }
         }
     }
 
@@ -163,6 +172,8 @@ auto PipeConnection::MonitorIoCompletion() -> void
                 case ERROR_MORE_DATA:
                     break;
                 default:
+                    _threadErrContext =
+                        "MonitorIoCompletion.GetQueuedCompletionStatus";
                     goto threadExit;
             }
         };
@@ -198,12 +209,18 @@ auto PipeConnection::MonitorIoCompletion() -> void
                                   &_RxBuffer.at(bytesReadTotal),
                                   bytesLeftThisMessage,
                                   nullptr,
-                                  &rxOv))
+                                  &rxOv)) {
+                        _threadErrContext =
+                            "PipeConnection::MonitorIoCompletion.ReadFile";
                         goto threadExit;
+                    }
                     continue;
                 }
-                else
+                else {
+                    _threadErrContext = "PipeConnection::MonitorIoCompletion."
+                                        "GetOverlappedResult";
                     goto threadExit;
+                }
             }
 
             // create new vector, which will be saved in RxQueue
@@ -224,8 +241,11 @@ auto PipeConnection::MonitorIoCompletion() -> void
                           nullptr,
                           &rxOv)) {
                 auto errNo = GetLastError();
-                if (errNo != ERROR_IO_PENDING)
+                if (errNo != ERROR_IO_PENDING) {
+                    _threadErrContext =
+                        "PipeConnection::MonitorIoCompletion.ReadFile";
                     goto threadExit;
+                }
             }
         }
         else {
@@ -244,13 +264,19 @@ threadExit:
 inline auto PipeConnection::CheckThread() -> void
 {
     if (_threadErr != ERROR_SUCCESS)
-        CleanupAndThrow(_threadErr);
+        if (_threadErrContext.has_value()) {
+            CleanupAndThrow(_threadErr, _threadErrContext.value());
+        }
+        else {
+            CleanupAndThrow(_threadErr);
+        }
 }
 
-auto PipeConnection::CleanupAndThrow(DWORD errNo) -> void
+auto PipeConnection::CleanupAndThrow(DWORD                      errNo,
+                                     std::optional<std::string> context) -> void
 {
     Close();
-    Win32ErrorExit(errNo);
+    Win32ErrorExit(errNo, context);
 }
 
 auto OverlappedData::allocate(const size_t len) -> OverlappedData *
