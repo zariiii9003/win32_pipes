@@ -172,29 +172,48 @@ auto PipeConnection::MonitorIoCompletion() -> void
                                                  &completionKey,
                                                  &pOv,
                                                  INFINITE);
-        if (!gqcsRes) {
-            DWORD errNo = GetLastError();
-            switch (errNo) {
-                case ERROR_SUCCESS:
-                case ERROR_MORE_DATA:
-                    break;
-                default:
-                    _threadErrContext =
-                        "MonitorIoCompletion.GetQueuedCompletionStatus";
-                    goto threadExit;
-            }
-        };
-
-        if (pOv == &rxOv) {
+        if (pOv == nullptr) {
+            // GetQueuedCompletionStatus failed
+            _threadErrContext = "MonitorIoCompletion.GetQueuedCompletionStatus";
+            goto threadExit;
+        }
+        else if (pOv == &rxOv) {
             // receive operation completed
-            auto ovRes = GetOverlappedResult(_handle,
-                                             pOv,
-                                             &numberOfBytesTransferred,
-                                             false);
+            GetOverlappedResult(_handle, pOv, &numberOfBytesTransferred, false);
+            auto ovRes = GetLastError();
             bytesReadTotal += static_cast<size_t>(numberOfBytesTransferred);
+            switch (ovRes) {
+                case ERROR_SUCCESS: { // create new vector, which will be saved
+                                      // in RxQueue
+                    auto rxMessageOut = std::unique_ptr<std::vector<char>>(
+                        new std::vector<char>(BUFSIZE));
+                    rxMessageOut->swap(_RxBuffer);
+                    rxMessageOut->resize(bytesReadTotal);
 
-            if (!ovRes) {
-                if (GetLastError() == ERROR_MORE_DATA) {
+                    bytesReadTotal = 0; // reset bytesReadTotal
+
+                    // push the new vector to the queue
+                    _RxQueueMutex.lock();
+                    _RxQueue.push(std::move(rxMessageOut));
+                    _RxQueueMutex.unlock();
+
+                    // reset rxOv and start next receive operation
+                    std::memset(&rxOv, 0, sizeof(rxOv));
+                    if (!ReadFile(_handle,
+                                  &_RxBuffer.front(),
+                                  _RxBuffer.size(),
+                                  NULL,
+                                  &rxOv)) {
+                        auto errNo = GetLastError();
+                        if (errNo != ERROR_IO_PENDING) {
+                            _threadErrContext =
+                                "PipeConnection::MonitorIoCompletion.ReadFile";
+                            goto threadExit;
+                        }
+                    }
+                    break;
+                }
+                case ERROR_MORE_DATA: {
                     // check how much data of the message is missing
                     DWORD bytesLeftThisMessage;
                     PeekNamedPipe(_handle,
@@ -205,13 +224,12 @@ auto PipeConnection::MonitorIoCompletion() -> void
                                   &bytesLeftThisMessage);
 
                     // check if rxBuffer size is sufficient
-                    size_t msgSize = bytesReadTotal +
-                                     static_cast<size_t>(bytesLeftThisMessage);
-                    if (msgSize > _RxBuffer.size())
-                        _RxBuffer.resize(msgSize);
+                    auto msgSize = bytesReadTotal +
+                                   static_cast<size_t>(bytesLeftThisMessage);
+                    _RxBuffer.resize(msgSize);
 
                     // Reset OVERLAPPED and read the rest of the message
-                    rxOv = OVERLAPPED{0};
+                    std::memset(&rxOv, 0, sizeof(rxOv));
                     if (!ReadFile(_handle,
                                   &_RxBuffer.at(bytesReadTotal),
                                   bytesLeftThisMessage,
@@ -221,48 +239,28 @@ auto PipeConnection::MonitorIoCompletion() -> void
                             "PipeConnection::MonitorIoCompletion.ReadFile";
                         goto threadExit;
                     }
-                    continue;
+                    break;
                 }
-                else {
+                default: {
                     _threadErrContext = "PipeConnection::MonitorIoCompletion."
-                                        "GetOverlappedResult";
-                    goto threadExit;
-                }
-            }
-
-            // create new vector, which will be saved in RxQueue
-            auto rxMessageOut = std::unique_ptr<std::vector<char>>(
-                new std::vector<char>(BUFSIZE));
-            rxMessageOut->swap(_RxBuffer);
-            rxMessageOut->resize(bytesReadTotal);
-            bytesReadTotal = 0; // reset bytesReadTotal
-
-            // push the new vector to the queue
-            _RxQueueMutex.lock();
-            _RxQueue.push(std::move(rxMessageOut));
-            _RxQueueMutex.unlock();
-
-            // reset rxOv and start next receive operation
-            rxOv = OVERLAPPED{0};
-            if (!ReadFile(_handle,
-                          &_RxBuffer.front(),
-                          _RxBuffer.size(),
-                          NULL,
-                          &rxOv)) {
-                auto errNo = GetLastError();
-                if (errNo != ERROR_IO_PENDING) {
-                    _threadErrContext =
-                        "PipeConnection::MonitorIoCompletion.ReadFile";
+                                        "GetOverlappedResult.1";
                     goto threadExit;
                 }
             }
         }
         else {
             // send operation completed
-            std::scoped_lock lock(_TxQueueMutex);
-            if (!_TxQueue.empty() && (&_TxQueue.front()->overlapped == pOv)) {
-                auto pOd = std::move(_TxQueue.front());
-                _TxQueue.pop();
+            _TxQueueMutex.lock();
+            auto pOd = std::move(_TxQueue.front());
+            _TxQueue.pop();
+            _TxQueueMutex.unlock();
+
+            if (!GetOverlappedResult(_handle,
+                                     pOv,
+                                     &numberOfBytesTransferred,
+                                     false)) {
+                _threadErrContext = "MonitorIoCompletion.GetOverlappedResult.2";
+                goto threadExit;
             }
         }
     }

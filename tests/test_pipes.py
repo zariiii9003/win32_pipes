@@ -68,14 +68,19 @@ def test_non_duplex():
     tx_data_256b = bytes(list(range(256)))
     tx_data_1kb = tx_data_256b * 4
     tx_data_1mb = tx_data_1kb * 1024
+    tx_data_10mb = tx_data_1mb * 10
 
     # send from c2 to c1
     c2.send_bytes(tx_data_1kb)
     c2.send_bytes(tx_data_1mb)
     c2.send_bytes(tx_data_256b)
+    c2.send_bytes(tx_data_10mb)
+    c2.send_bytes(tx_data_256b)
     time.sleep(0.5)
     assert c1.recv_bytes() == tx_data_1kb
     assert c1.recv_bytes() == tx_data_1mb
+    assert c1.recv_bytes() == tx_data_256b
+    assert c1.recv_bytes() == tx_data_10mb
     assert c1.recv_bytes() == tx_data_256b
     assert c1.recv_bytes() is None
 
