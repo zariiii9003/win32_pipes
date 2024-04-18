@@ -5,7 +5,6 @@
 #include "./util.h"
 #include <format>
 #include <iostream>
-#include <optional>
 #include <stdexcept>
 
 // Convert ANSI string to UTF-8
@@ -82,15 +81,14 @@ extern void Win32ErrorExit(DWORD errNo, std::optional<std::string> context)
         std::string errMsg{};
 
         if (context.has_value()) {
-            errMsg = std::format("{} [WinError {}: {}]",
-                                 context.value(),
+            errMsg = std::format("[WinError {}]: {} ({})",
                                  _errNo,
-                                 utf8String.c_str());
+                                 utf8String.c_str(),
+                                 context.value());
         }
         else {
-            errMsg = std::format("[WinError {}: {}]", _errNo, utf8String);
+            errMsg = std::format("[WinError {}] {}", _errNo, utf8String);
         }
-        std::cerr << errMsg << std::endl;
         throw std::runtime_error(errMsg);
     }
 };
