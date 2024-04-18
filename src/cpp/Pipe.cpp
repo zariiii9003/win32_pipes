@@ -7,7 +7,7 @@
 static size_t     _mmap_counter{0};
 static std::mutex _mmap_counter_lock;
 
-auto GeneratePipeAddress() -> std::string
+auto generatePipeAddress() -> std::string
 {
     std::scoped_lock lock(_mmap_counter_lock);
     auto             newAddress = std::format("\\\\.\\pipe\\pyc-{}-{}-",
@@ -17,10 +17,10 @@ auto GeneratePipeAddress() -> std::string
     return newAddress;
 }
 
-auto Pipe(bool duplex,
+auto pipe(bool duplex,
           bool startThread) -> std::tuple<PipeConnection *, PipeConnection *>
 {
-    auto address  = GeneratePipeAddress();
+    auto address  = generatePipeAddress();
     auto openmode = PIPE_ACCESS_DUPLEX;
     auto access   = GENERIC_READ | GENERIC_WRITE;
     auto obsize   = BUFSIZE;

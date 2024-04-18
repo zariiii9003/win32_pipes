@@ -19,11 +19,11 @@ PipeConnection::PipeConnection(size_t handle,
             "at least one of `readable` and `writable` must be True");
 
     if (startThread)
-        StartThread();
+        PipeConnection::startThread();
 };
 
-PipeConnection::~PipeConnection() { Close(); }
-auto PipeConnection::Close() -> void
+PipeConnection::~PipeConnection() { close(); }
+auto PipeConnection::close() -> void
 {
     if (!_closed) {
         _closed = true;
@@ -40,32 +40,32 @@ auto PipeConnection::Close() -> void
     }
 }
 
-auto PipeConnection::StartThread() -> void
+auto PipeConnection::startThread() -> void
 {
     if (!_started) {
         _completionPort = CreateIoCompletionPort(_handle, nullptr, 0, 0);
         if (_completionPort == NULL)
-            CleanupAndThrow(
+            cleanupAndThrowExc(
                 0,
                 "PipeConnection::StartThread.CreateIoCompletionPort");
 
-        _thread  = std::thread(&PipeConnection::MonitorIoCompletion, this);
+        _thread  = std::thread(&PipeConnection::monitorIoCompletion, this);
         _started = true;
     }
 }
 
-auto PipeConnection::GetHandle() const -> size_t
+auto PipeConnection::getHandle() const -> size_t
 {
     return reinterpret_cast<size_t>(_handle);
 }
 
-auto PipeConnection::GetReadable() const -> bool { return _readable; }
+auto PipeConnection::getReadable() const -> bool { return _readable; }
 
-auto PipeConnection::GetWritable() const -> bool { return _writable; }
+auto PipeConnection::getWritable() const -> bool { return _writable; }
 
-auto PipeConnection::GetClosed() -> bool { return _closed; }
+auto PipeConnection::getClosed() -> bool { return _closed; }
 
-auto PipeConnection::SendBytes(const nanobind::bytes       buffer,
+auto PipeConnection::sendBytes(const nanobind::bytes       buffer,
                                const size_t                offset,
                                const std::optional<size_t> size) -> void
 {
@@ -76,7 +76,7 @@ auto PipeConnection::SendBytes(const nanobind::bytes       buffer,
     if (!_started)
         throw std::exception("thread was not started yet");
 
-    CheckThread();
+    checkThread();
 
     auto bufferLength = buffer.size();
     if (bufferLength <= offset)
@@ -110,12 +110,13 @@ auto PipeConnection::SendBytes(const nanobind::bytes       buffer,
             case ERROR_IO_PENDING:
                 break;
             default:
-                CleanupAndThrow(errNo, "PipeConnection::SendBytes.WriteFile");
+                cleanupAndThrowExc(errNo,
+                                   "PipeConnection::SendBytes.WriteFile");
         }
     }
 }
 
-auto PipeConnection::RecvBytes() -> std::optional<nanobind::bytes>
+auto PipeConnection::recvBytes() -> std::optional<nanobind::bytes>
 {
     if (_closed)
         throw std::exception("handle is closed");
@@ -124,7 +125,7 @@ auto PipeConnection::RecvBytes() -> std::optional<nanobind::bytes>
     if (!_started)
         throw std::exception("thread was not started yet");
 
-    CheckThread();
+    checkThread();
 
     // Get RxQueue content and release lock asap. Return if empty.
     _RxQueueMutex.lock();
@@ -140,7 +141,7 @@ auto PipeConnection::RecvBytes() -> std::optional<nanobind::bytes>
     return nanobind::bytes(&rxMessage->front(), rxMessage->size());
 }
 
-auto PipeConnection::MonitorIoCompletion() -> void
+auto PipeConnection::monitorIoCompletion() -> void
 {
     ULONG_PTR completionKey{0};
     size_t    bytesReadTotal{0};
@@ -153,7 +154,7 @@ auto PipeConnection::MonitorIoCompletion() -> void
                       &_RxBuffer.front(),
                       _RxBuffer.size(),
                       nullptr,
-                      &rxOv)) {
+                      &_rxOv)) {
             auto errNo = GetLastError();
             if (errNo != ERROR_IO_PENDING) {
                 _threadErrContext =
@@ -177,7 +178,7 @@ auto PipeConnection::MonitorIoCompletion() -> void
             _threadErrContext = "MonitorIoCompletion.GetQueuedCompletionStatus";
             goto threadExit;
         }
-        else if (pOv == &rxOv) {
+        else if (pOv == &_rxOv) {
             // receive operation completed
             GetOverlappedResult(_handle, pOv, &numberOfBytesTransferred, false);
             auto ovRes = GetLastError();
@@ -198,12 +199,12 @@ auto PipeConnection::MonitorIoCompletion() -> void
                     _RxQueueMutex.unlock();
 
                     // reset rxOv and start next receive operation
-                    std::memset(&rxOv, 0, sizeof(rxOv));
+                    std::memset(&_rxOv, 0, sizeof(_rxOv));
                     if (!ReadFile(_handle,
                                   &_RxBuffer.front(),
                                   _RxBuffer.size(),
                                   NULL,
-                                  &rxOv)) {
+                                  &_rxOv)) {
                         auto errNo = GetLastError();
                         if (errNo != ERROR_IO_PENDING) {
                             _threadErrContext =
@@ -229,12 +230,12 @@ auto PipeConnection::MonitorIoCompletion() -> void
                     _RxBuffer.resize(msgSize);
 
                     // Reset OVERLAPPED and read the rest of the message
-                    std::memset(&rxOv, 0, sizeof(rxOv));
+                    std::memset(&_rxOv, 0, sizeof(_rxOv));
                     if (!ReadFile(_handle,
                                   &_RxBuffer.at(bytesReadTotal),
                                   bytesLeftThisMessage,
                                   nullptr,
-                                  &rxOv)) {
+                                  &_rxOv)) {
                         _threadErrContext =
                             "PipeConnection::MonitorIoCompletion.ReadFile";
                         goto threadExit;
@@ -268,22 +269,24 @@ threadExit:
     _threadErr = GetLastError();
 };
 
-inline auto PipeConnection::CheckThread() -> void
+inline auto PipeConnection::checkThread() -> void
 {
     if (_threadErr != ERROR_SUCCESS)
         if (_threadErrContext.has_value()) {
-            CleanupAndThrow(_threadErr, _threadErrContext.value());
+            cleanupAndThrowExc(_threadErr, _threadErrContext.value());
         }
         else {
-            CleanupAndThrow(_threadErr);
+            cleanupAndThrowExc(_threadErr);
         }
 }
 
-auto PipeConnection::CleanupAndThrow(DWORD                      errNo,
-                                     std::optional<std::string> context) -> void
+auto PipeConnection::cleanupAndThrowExc(DWORD                      errNo,
+                                        std::optional<std::string> context)
+    -> void
 {
-    Close();
+    close();
     Win32ErrorExit(errNo, context);
+    throw std::runtime_error("This should not be reached.");
 }
 
 OverlappedData::OverlappedData(const char *pBuffer, const size_t len)

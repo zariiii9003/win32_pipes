@@ -27,6 +27,7 @@ nanobind_add_module(
   src/cpp/module.cpp
   src/cpp/Pipe.cpp
   src/cpp/PipeConnection.cpp
+  src/cpp/PipeListener.cpp
   src/cpp/util.cpp)
 
 set_property(TARGET _ext PROPERTY CXX_STANDARD 20)

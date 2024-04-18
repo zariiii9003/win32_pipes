@@ -32,23 +32,23 @@ class PipeConnection {
                    bool   writable    = true,
                    bool   startThread = false);
 
-    auto StartThread() -> void;
+    auto startThread() -> void;
 
-    auto GetHandle() const -> size_t;
+    auto getHandle() const -> size_t;
 
-    auto GetReadable() const -> bool;
+    auto getReadable() const -> bool;
 
-    auto GetWritable() const -> bool;
+    auto getWritable() const -> bool;
 
-    auto GetClosed() -> bool;
+    auto getClosed() -> bool;
 
-    auto SendBytes(const nanobind::bytes       buffer,
+    auto sendBytes(const nanobind::bytes       buffer,
                    const size_t                offset = 0,
                    const std::optional<size_t> size   = {}) -> void;
 
-    auto RecvBytes() -> std::optional<nanobind::bytes>;
+    auto recvBytes() -> std::optional<nanobind::bytes>;
 
-    auto Close() -> void;
+    auto close() -> void;
 
     ~PipeConnection();
 
@@ -64,15 +64,15 @@ class PipeConnection {
     std::thread                                    _thread;
     DWORD                                          _threadErr{0};
     std::optional<std::string>                     _threadErrContext;
-    OVERLAPPED                                     rxOv{0};
+    OVERLAPPED                                     _rxOv{0};
     std::vector<char>                              _RxBuffer{0};
     std::queue<std::unique_ptr<std::vector<char>>> _RxQueue;
     std::mutex                                     _RxQueueMutex;
 
-    void        MonitorIoCompletion();
-    inline void CheckThread();
-    void        CleanupAndThrow(DWORD                      errNo   = 0,
-                                std::optional<std::string> context = {});
+    void        monitorIoCompletion();
+    inline void checkThread();
+    void        cleanupAndThrowExc(DWORD                      errNo   = 0,
+                                   std::optional<std::string> context = {});
 };
 
 #endif
