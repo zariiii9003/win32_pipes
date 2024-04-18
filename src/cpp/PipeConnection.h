@@ -6,6 +6,7 @@
 #define PIPECONNECTION_H
 
 #include <Windows.h>
+#include <memory>
 #include <mutex>
 #include <nanobind/nanobind.h>
 #include <optional>
@@ -20,9 +21,7 @@ class OverlappedData {
   public:
     OVERLAPPED        overlapped;
     std::vector<char> vector;
-
-    static auto allocate(const size_t len) -> OverlappedData *;
-    static auto copy(const char *pBuffer, const size_t len) -> OverlappedData *;
+    OverlappedData(const char *pBuffer, const size_t len);
 };
 
 class PipeConnection {
@@ -50,20 +49,20 @@ class PipeConnection {
     ~PipeConnection();
 
   private:
-    const HANDLE                    _handle;
-    const bool                      _readable;
-    const bool                      _writable;
-    bool                            _closed = false;
-    HANDLE                          _completionPort;
-    std::queue<OverlappedData *>    _TxQueue;
-    std::mutex                      _TxQueueMutex;
-    std::thread                     _thread;
-    DWORD                           _threadErr{0};
-    std::optional<std::string>      _threadErrContext;
-    OVERLAPPED                      rxOv{0};
-    std::vector<char>               _RxBuffer{0};
-    std::queue<std::vector<char> *> _RxQueue;
-    std::mutex                      _RxQueueMutex;
+    const HANDLE                                   _handle;
+    const bool                                     _readable;
+    const bool                                     _writable;
+    bool                                           _closed = false;
+    HANDLE                                         _completionPort;
+    std::queue<std::unique_ptr<OverlappedData>>    _TxQueue;
+    std::mutex                                     _TxQueueMutex;
+    std::thread                                    _thread;
+    DWORD                                          _threadErr{0};
+    std::optional<std::string>                     _threadErrContext;
+    OVERLAPPED                                     rxOv{0};
+    std::vector<char>                              _RxBuffer{0};
+    std::queue<std::unique_ptr<std::vector<char>>> _RxQueue;
+    std::mutex                                     _RxQueueMutex;
 
     void        MonitorIoCompletion();
     inline void CheckThread();

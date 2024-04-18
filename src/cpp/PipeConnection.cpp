@@ -2,10 +2,9 @@
 #
 # SPDX-License-Identifier: MIT */
 
-#include <nanobind/nanobind.h>
-
 #include "./PipeConnection.h"
 #include "./util.h"
+#include <nanobind/nanobind.h>
 
 PipeConnection::PipeConnection(const size_t handle,
                                const bool   readable,
@@ -35,21 +34,13 @@ auto PipeConnection::Close() -> void
 
         // close handles
         if (!CloseHandle(_handle))
-            Win32ErrorExit(0, "PipeConnection::Close.CloseHandle(_handle)");
+            Win32ErrorExit(0, "PipeConnection::Close.CloseHandle.1");
         if (!CloseHandle(_completionPort))
-            Win32ErrorExit(
-                0,
-                "PipeConnection::Close.CloseHandle(_completionPort)");
+            Win32ErrorExit(0, "PipeConnection::Close.CloseHandle.2");
 
         // wait until thread stops
         if (_thread.joinable())
             _thread.join();
-
-        // release queued buffers
-        while (!_TxQueue.empty()) {
-            delete _TxQueue.front();
-            _TxQueue.pop();
-        }
     }
 }
 
@@ -89,13 +80,17 @@ auto PipeConnection::SendBytes(const nanobind::bytes       buffer,
     // create OverlappedObject and push it to the queue before starting
     // WriteFile(), otherwise the monitor thread might try to clean up before it
     // is inserted
-    auto pOd = OverlappedData::copy((buffer.c_str() + offset), _size);
+    auto pOdRaw = new OverlappedData(buffer.c_str() + offset, _size);
     {
+        auto             pOdUnique = std::unique_ptr<OverlappedData>(pOdRaw);
         std::scoped_lock lock(_TxQueueMutex);
-        _TxQueue.push(pOd);
+        _TxQueue.push(std::move(pOdUnique));
     }
-
-    if (!WriteFile(_handle, &pOd->vector.front(), _size, 0, &pOd->overlapped)) {
+    if (!WriteFile(_handle,
+                   &pOdRaw->vector.front(),
+                   pOdRaw->vector.size(),
+                   NULL,
+                   &pOdRaw->overlapped)) {
         auto errNo = GetLastError();
         switch (errNo) {
             case ERROR_SUCCESS:
@@ -118,18 +113,17 @@ auto PipeConnection::RecvBytes() -> std::optional<nanobind::bytes>
     CheckThread();
 
     // Get RxQueue content and release lock asap. Return if empty.
-    std::vector<char> *rxMessage;
+    std::unique_ptr<std::vector<char>> rxMessage;
     {
         std::scoped_lock lock(_RxQueueMutex);
         if (_RxQueue.empty())
             return {};
-        rxMessage = _RxQueue.front();
+        rxMessage = std::move(_RxQueue.front());
         _RxQueue.pop();
     }
 
     // create python bytes object from vector
     auto nbbytes = new nanobind::bytes(&rxMessage->front(), rxMessage->size());
-    delete rxMessage;
     return std::move(*nbbytes);
 }
 
@@ -224,21 +218,22 @@ auto PipeConnection::MonitorIoCompletion() -> void
             }
 
             // create new vector, which will be saved in RxQueue
-            auto rxMessageOut = new std::vector<char>(BUFSIZE);
+            auto rxMessageOut = std::unique_ptr<std::vector<char>>(
+                new std::vector<char>(BUFSIZE));
             rxMessageOut->swap(_RxBuffer);
             rxMessageOut->resize(bytesReadTotal);
             bytesReadTotal = 0; // reset bytesReadTotal
 
             // push the new vector to the queue
             std::scoped_lock lock(_RxQueueMutex);
-            _RxQueue.push(rxMessageOut);
+            _RxQueue.push(std::move(rxMessageOut));
 
             // reset rxOv and start next receive operation
             rxOv = OVERLAPPED{0};
             if (!ReadFile(_handle,
                           &_RxBuffer.front(),
                           _RxBuffer.size(),
-                          nullptr,
+                          NULL,
                           &rxOv)) {
                 auto errNo = GetLastError();
                 if (errNo != ERROR_IO_PENDING) {
@@ -252,7 +247,7 @@ auto PipeConnection::MonitorIoCompletion() -> void
             // send operation completed
             std::scoped_lock lock(_TxQueueMutex);
             if (!_TxQueue.empty() && (&_TxQueue.front()->overlapped == pOv)) {
-                delete _TxQueue.front();
+                auto pOd = std::move(_TxQueue.front());
                 _TxQueue.pop();
             }
         }
@@ -279,14 +274,8 @@ auto PipeConnection::CleanupAndThrow(DWORD                      errNo,
     Win32ErrorExit(errNo, context);
 }
 
-auto OverlappedData::allocate(const size_t len) -> OverlappedData *
+OverlappedData::OverlappedData(const char *pBuffer, const size_t len)
 {
-    return new OverlappedData{OVERLAPPED{0}, std::vector<char>(len)};
-};
-
-auto OverlappedData::copy(const char  *pBuffer,
-                          const size_t len) -> OverlappedData *
-{
-    return new OverlappedData{OVERLAPPED{0},
-                              std::vector<char>(pBuffer, pBuffer + len)};
+    overlapped = OVERLAPPED{0};
+    vector     = std::vector<char>(pBuffer, pBuffer + len);
 };
