@@ -24,6 +24,7 @@ nanobind_add_module(
   _ext
   STABLE_ABI
   NB_STATIC
+  LTO
   src/cpp/module.cpp
   src/cpp/Pipe.cpp
   src/cpp/PipeClient.cpp
