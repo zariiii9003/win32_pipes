@@ -111,7 +111,7 @@ def test_broken_pipe_rx():
 
     tx.close()
     time.sleep(0.001)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(BrokenPipeError):
         rx.recv_bytes()
 
     rx.close()
@@ -122,8 +122,8 @@ def test_broken_pipe_rx():
 def test_broken_pipe_tx():
     rx, tx = win_pipes.Pipe(False, start_thread=True)
 
-    rx.close()
-    with pytest.raises(RuntimeError):
+    with pytest.raises(BrokenPipeError):
+        rx.close()
         tx.send_bytes(b"data")
 
     tx.close()

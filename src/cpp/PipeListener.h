@@ -20,8 +20,7 @@ class PipeListener {
     HANDLE             _closeEvent{};
 
     auto newHandle(bool first) -> HANDLE;
-    auto cleanupAndThrowExc(DWORD                      errNo,
-                            std::optional<std::string> context) -> void;
+    auto cleanupAndThrowExc(DWORD errNo) -> void;
 
   public:
     PipeListener(std::string address, std::optional<size_t> backlog = {});

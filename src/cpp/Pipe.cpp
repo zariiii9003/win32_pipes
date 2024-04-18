@@ -40,7 +40,7 @@ auto pipe(bool duplex,
         NMPWAIT_WAIT_FOREVER,
         nullptr);
     if (h1 == INVALID_HANDLE_VALUE)
-        Win32ErrorExit(0, "Pipe.CreateNamedPipe");
+        Win32ErrorExit(0);
 
     HANDLE h2 = CreateFile(address.c_str(),
                            access,
@@ -50,11 +50,11 @@ auto pipe(bool duplex,
                            FILE_FLAG_OVERLAPPED,
                            nullptr);
     if (h2 == INVALID_HANDLE_VALUE)
-        Win32ErrorExit(0, "Pipe.CreateFile");
+        Win32ErrorExit(0);
 
     DWORD mode = PIPE_READMODE_MESSAGE;
     if (!SetNamedPipeHandleState(h2, &mode, nullptr, nullptr))
-        Win32ErrorExit(0, "Pipe.SetNamedPipeHandleState");
+        Win32ErrorExit(0);
 
     OVERLAPPED ov{0};
     DWORD      NumberOfBytesTransferred{0};
@@ -64,10 +64,10 @@ auto pipe(bool duplex,
             break;
         case ERROR_IO_PENDING:
             if (!GetOverlappedResult(h1, &ov, &NumberOfBytesTransferred, TRUE))
-                Win32ErrorExit(0, "Pipe.GetOverlappedResult");
+                Win32ErrorExit(0);
             break;
         default:
-            Win32ErrorExit(0, "Pipe.ConnectNamedPipe");
+            Win32ErrorExit(0);
     }
 
     return std::make_tuple<PipeConnection *, PipeConnection *>(

@@ -30,9 +30,9 @@ auto PipeConnection::close() -> void
 
         // close handles
         if (!CloseHandle(_handle))
-            Win32ErrorExit(0, "PipeConnection::Close.CloseHandle.1");
+            Win32ErrorExit(0);
         if (_started && !CloseHandle(_completionPort))
-            Win32ErrorExit(0, "PipeConnection::Close.CloseHandle.2");
+            Win32ErrorExit(0);
 
         // wait until thread stops
         if (_thread.joinable())
@@ -45,9 +45,7 @@ auto PipeConnection::startThread() -> void
     if (!_started) {
         _completionPort = CreateIoCompletionPort(_handle, nullptr, 0, 0);
         if (_completionPort == NULL)
-            cleanupAndThrowExc(
-                0,
-                "PipeConnection::StartThread.CreateIoCompletionPort");
+            cleanupAndThrowExc(0);
 
         _thread  = std::thread(&PipeConnection::monitorIoCompletion, this);
         _started = true;
@@ -110,8 +108,7 @@ auto PipeConnection::sendBytes(const nanobind::bytes       buffer,
             case ERROR_IO_PENDING:
                 break;
             default:
-                cleanupAndThrowExc(errNo,
-                                   "PipeConnection::SendBytes.WriteFile");
+                cleanupAndThrowExc(errNo);
         }
     }
 }
@@ -273,20 +270,18 @@ inline auto PipeConnection::checkThread() -> void
 {
     if (_threadErr != ERROR_SUCCESS)
         if (_threadErrContext.has_value()) {
-            cleanupAndThrowExc(_threadErr, _threadErrContext.value());
+            cleanupAndThrowExc(_threadErr);
         }
         else {
             cleanupAndThrowExc(_threadErr);
         }
 }
 
-auto PipeConnection::cleanupAndThrowExc(DWORD                      errNo,
-                                        std::optional<std::string> context)
-    -> void
+auto PipeConnection::cleanupAndThrowExc(DWORD errNo) -> void
 {
     close();
-    Win32ErrorExit(errNo, context);
-    throw std::runtime_error("This should not be reached.");
+    Win32ErrorExit(errNo);
+    throw std::runtime_error("Should be unreachable");
 }
 
 OverlappedData::OverlappedData(const char *pBuffer, const size_t len)

@@ -6,12 +6,10 @@
 #define UTIL_H
 
 #include <Windows.h>
-#include <optional>
-#include <string>
+#include <system_error>
 
-extern auto AnsiFormatMessage(DWORD errNo) -> std::string;
-extern auto AnsiToUtf8(const std::string &ansiString) -> std::string;
-extern auto Win32ErrorExit(DWORD                      errNo   = 0,
-                           std::optional<std::string> context = {}) -> void;
+extern auto systemErrorToOsError(const std::exception_ptr &eptr,
+                                 void                     *data) -> void;
+extern auto Win32ErrorExit(DWORD errNo = 0) -> void;
 
 #endif

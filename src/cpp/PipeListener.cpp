@@ -33,8 +33,7 @@ auto PipeListener::accept() -> PipeConnection
             default: {
                 CloseHandle(handle);
                 CloseHandle(ov.hEvent);
-                cleanupAndThrowExc(errNo,
-                                   "PipeListener::accept.ConnectNamedPipe");
+                cleanupAndThrowExc(errNo);
             }
         }
     }
@@ -52,7 +51,8 @@ auto PipeListener::accept() -> PipeConnection
         default: {
             CloseHandle(handle);
             CloseHandle(ov.hEvent);
-            cleanupAndThrowExc(0, "PipeListener::accept.ConnectNamedPipe");
+            cleanupAndThrowExc(0);
+            throw std::runtime_error("Should be unreachable");
         }
     }
 }
@@ -87,15 +87,13 @@ auto PipeListener::newHandle(bool first) -> HANDLE
                         NMPWAIT_WAIT_FOREVER,
                         NULL);
     if (handle == INVALID_HANDLE_VALUE)
-        cleanupAndThrowExc(0, "PipeListener::newHandle.CreateNamedPipe");
+        cleanupAndThrowExc(0);
     return handle;
 }
 
-auto PipeListener::cleanupAndThrowExc(DWORD                      errNo,
-                                      std::optional<std::string> context)
-    -> void
+auto PipeListener::cleanupAndThrowExc(DWORD errNo) -> void
 {
     close();
-    Win32ErrorExit(errNo, context);
+    Win32ErrorExit(errNo);
     throw std::runtime_error("This should not be reached.");
 }

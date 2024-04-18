@@ -17,11 +17,11 @@ auto pipeClient(std::string address) -> PipeConnection
                              FILE_FLAG_OVERLAPPED,
                              NULL);
     if (handle == INVALID_HANDLE_VALUE)
-        Win32ErrorExit(0, "PipeClient::PipeClient.CreateFile");
+        Win32ErrorExit(0);
 
     DWORD mode{PIPE_READMODE_MESSAGE};
     if (!SetNamedPipeHandleState(handle, &mode, nullptr, nullptr))
-        Win32ErrorExit(0, "PipeClient::PipeClient.SetNamedPipeHandleState");
+        Win32ErrorExit(0);
 
     return PipeConnection(reinterpret_cast<size_t>(handle));
 }

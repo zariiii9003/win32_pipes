@@ -71,8 +71,7 @@ class PipeConnection {
 
     void        monitorIoCompletion();
     inline void checkThread();
-    void        cleanupAndThrowExc(DWORD                      errNo   = 0,
-                                   std::optional<std::string> context = {});
+    void        cleanupAndThrowExc(DWORD errNo = 0);
 };
 
 #endif

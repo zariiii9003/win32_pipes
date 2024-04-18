@@ -18,6 +18,7 @@ using namespace nanobind::literals;
 
 NB_MODULE(_ext, m)
 {
+    nanobind::register_exception_translator(systemErrorToOsError);
     nanobind::class_<PipeConnection>(m, "PipeConnection")
         .def(nanobind::init<const size_t, const bool, const bool>(),
              "handle"_a,
