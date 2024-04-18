@@ -108,9 +108,9 @@ def test_context_manager():
 
 def test_broken_pipe_rx():
     rx, tx = win_pipes.Pipe(False, start_thread=True)
-
     tx.close()
     time.sleep(0.001)
+
     with pytest.raises(BrokenPipeError):
         rx.recv_bytes()
 
@@ -121,9 +121,9 @@ def test_broken_pipe_rx():
 
 def test_broken_pipe_tx():
     rx, tx = win_pipes.Pipe(False, start_thread=True)
+    rx.close()
 
     with pytest.raises(BrokenPipeError):
-        rx.close()
         tx.send_bytes(b"data")
 
     tx.close()

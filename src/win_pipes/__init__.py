@@ -2,11 +2,12 @@
 #
 # SPDX-License-Identifier: MIT
 
-import _winapi
-from multiprocessing import reduction
 import typing
+from multiprocessing import reduction
 
-from win_pipes._ext import __version__, PipeClient, PipeConnection, Pipe, PipeListener
+import _winapi
+
+from win_pipes._ext import Pipe, PipeClient, PipeConnection, PipeListener, __version__
 
 __all__ = ["__version__", "Pipe", "PipeConnection", "PipeListener", "PipeClient"]
 
