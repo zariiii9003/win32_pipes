@@ -16,6 +16,7 @@ def reduce_pipe_connection(conn: PipeConnection) -> typing.Any:
         _winapi.FILE_GENERIC_WRITE if conn.writable else 0
     )
     dh = reduction.DupHandle(conn.fileno(), access)
+    conn.close()
     return rebuild_pipe_connection, (dh, conn.readable, conn.writable)
 
 

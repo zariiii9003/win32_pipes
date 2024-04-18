@@ -17,7 +17,8 @@ auto GeneratePipeAddress() -> std::string
     return newAddress;
 }
 
-auto Pipe(bool duplex) -> std::tuple<PipeConnection *, PipeConnection *>
+auto Pipe(bool duplex,
+          bool startThread) -> std::tuple<PipeConnection *, PipeConnection *>
 {
     auto address  = GeneratePipeAddress();
     auto openmode = PIPE_ACCESS_DUPLEX;
@@ -70,6 +71,12 @@ auto Pipe(bool duplex) -> std::tuple<PipeConnection *, PipeConnection *>
     }
 
     return std::make_tuple<PipeConnection *, PipeConnection *>(
-        new PipeConnection(reinterpret_cast<size_t>(h1), true, duplex),
-        new PipeConnection(reinterpret_cast<size_t>(h2), duplex, true));
+        new PipeConnection(reinterpret_cast<size_t>(h1),
+                           true,
+                           duplex,
+                           startThread),
+        new PipeConnection(reinterpret_cast<size_t>(h2),
+                           duplex,
+                           true,
+                           startThread));
 };

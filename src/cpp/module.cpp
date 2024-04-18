@@ -21,6 +21,7 @@ NB_MODULE(_ext, m)
              "handle"_a,
              "readable"_a = true,
              "writable"_a = true)
+        .def("start_thread", &PipeConnection::StartThread)
         .def("close", &PipeConnection::Close)
         .def("fileno", &PipeConnection::GetHandle)
         .def("send_bytes",
@@ -32,7 +33,11 @@ NB_MODULE(_ext, m)
         .def_prop_ro("closed", &PipeConnection::GetClosed)
         .def_prop_ro("readable", &PipeConnection::GetReadable)
         .def_prop_ro("writable", &PipeConnection::GetWritable)
-        .def("__enter__", [](PipeConnection &pc) { return &pc; })
+        .def("__enter__",
+             [](PipeConnection &pc) {
+                 pc.StartThread();
+                 return &pc;
+             })
         .def(
             "__exit__",
             [](PipeConnection &pc,
@@ -43,7 +48,7 @@ NB_MODULE(_ext, m)
             "exc_value"_a.none(),
             "traceback"_a.none());
 
-    m.def("Pipe", &Pipe, "duplex"_a = true);
+    m.def("Pipe", &Pipe, "duplex"_a = true, "start_thread"_a = false);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = STRINGIFY(VERSION_INFO);

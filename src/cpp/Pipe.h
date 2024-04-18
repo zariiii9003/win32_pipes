@@ -12,6 +12,7 @@
 #include <tuple>
 
 auto GeneratePipeAddress() -> std::string;
-auto Pipe(bool duplex = true) -> std::tuple<PipeConnection *, PipeConnection *>;
+auto Pipe(bool duplex = true, bool startThread = false)
+    -> std::tuple<PipeConnection *, PipeConnection *>;
 
 #endif

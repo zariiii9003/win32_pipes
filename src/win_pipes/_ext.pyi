@@ -5,8 +5,13 @@ __version__: str
 
 class PipeConnection(AbstractContextManager[PipeConnection]):
     def __init__(
-        self, handle: int, readable: bool = True, writable: bool = True
+        self,
+        handle: int,
+        readable: bool = True,
+        writable: bool = True,
+        start_thread: bool = False,
     ) -> None: ...
+    def start_thread(self) -> None: ...
     def recv_bytes(self) -> bytes | None: ...
     def send_bytes(
         self, buffer: bytes, offset: int = 0, size: int | None = None
@@ -27,4 +32,6 @@ class PipeConnection(AbstractContextManager[PipeConnection]):
         traceback: TracebackType | None,
     ) -> bool | None: ...
 
-def Pipe(duplex: bool = True) -> tuple[PipeConnection, PipeConnection]: ...
+def Pipe(
+    duplex: bool = True, start_thread: bool = False
+) -> tuple[PipeConnection, PipeConnection]: ...

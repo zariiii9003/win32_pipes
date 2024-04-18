@@ -22,13 +22,17 @@ class OverlappedData {
     OVERLAPPED        overlapped;
     std::vector<char> vector;
     OverlappedData(const char *pBuffer, const size_t len);
+    OverlappedData(OverlappedData &&) = default;
 };
 
 class PipeConnection {
   public:
-    PipeConnection(const size_t handle,
-                   const bool   readable = true,
-                   const bool   writable = true);
+    PipeConnection(size_t handle,
+                   bool   readable    = true,
+                   bool   writable    = true,
+                   bool   startThread = false);
+
+    auto StartThread() -> void;
 
     auto GetHandle() const -> size_t;
 
@@ -52,7 +56,8 @@ class PipeConnection {
     const HANDLE                                   _handle;
     const bool                                     _readable;
     const bool                                     _writable;
-    bool                                           _closed = false;
+    bool                                           _closed  = false;
+    bool                                           _started = false;
     HANDLE                                         _completionPort;
     std::queue<std::unique_ptr<OverlappedData>>    _TxQueue;
     std::mutex                                     _TxQueueMutex;

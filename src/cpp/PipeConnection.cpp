@@ -6,9 +6,10 @@
 #include "./util.h"
 #include <nanobind/nanobind.h>
 
-PipeConnection::PipeConnection(const size_t handle,
-                               const bool   readable,
-                               const bool   writable)
+PipeConnection::PipeConnection(size_t handle,
+                               bool   readable,
+                               bool   writable,
+                               bool   startThread)
     : _handle{reinterpret_cast<const HANDLE>(handle)},
       _readable{readable},
       _writable{writable}
@@ -17,13 +18,8 @@ PipeConnection::PipeConnection(const size_t handle,
         throw nanobind::value_error(
             "at least one of `readable` and `writable` must be True");
 
-    _completionPort = CreateIoCompletionPort(_handle, nullptr, 0, 0);
-    if (_completionPort == NULL)
-        CleanupAndThrow(
-            0,
-            "PipeConnection::PipeConnection.CreateIoCompletionPort");
-
-    _thread = std::thread(&PipeConnection::MonitorIoCompletion, this);
+    if (startThread)
+        StartThread();
 };
 
 PipeConnection::~PipeConnection() { Close(); }
@@ -35,12 +31,26 @@ auto PipeConnection::Close() -> void
         // close handles
         if (!CloseHandle(_handle))
             Win32ErrorExit(0, "PipeConnection::Close.CloseHandle.1");
-        if (!CloseHandle(_completionPort))
+        if (_started && !CloseHandle(_completionPort))
             Win32ErrorExit(0, "PipeConnection::Close.CloseHandle.2");
 
         // wait until thread stops
         if (_thread.joinable())
             _thread.join();
+    }
+}
+
+auto PipeConnection::StartThread() -> void
+{
+    if (!_started) {
+        _completionPort = CreateIoCompletionPort(_handle, nullptr, 0, 0);
+        if (_completionPort == NULL)
+            CleanupAndThrow(
+                0,
+                "PipeConnection::StartThread.CreateIoCompletionPort");
+
+        _thread  = std::thread(&PipeConnection::MonitorIoCompletion, this);
+        _started = true;
     }
 }
 
@@ -63,6 +73,8 @@ auto PipeConnection::SendBytes(const nanobind::bytes       buffer,
         throw std::exception("handle is closed");
     if (!_writable)
         throw std::exception("connection is read-only");
+    if (!_started)
+        throw std::exception("thread was not started yet");
 
     CheckThread();
 
@@ -94,8 +106,8 @@ auto PipeConnection::SendBytes(const nanobind::bytes       buffer,
         auto errNo = GetLastError();
         switch (errNo) {
             case ERROR_SUCCESS:
-            case ERROR_IO_PENDING:
             case ERROR_IO_INCOMPLETE:
+            case ERROR_IO_PENDING:
                 break;
             default:
                 CleanupAndThrow(errNo, "PipeConnection::SendBytes.WriteFile");
@@ -109,22 +121,23 @@ auto PipeConnection::RecvBytes() -> std::optional<nanobind::bytes>
         throw std::exception("handle is closed");
     if (!_readable)
         throw std::exception("connection is write-only");
+    if (!_started)
+        throw std::exception("thread was not started yet");
 
     CheckThread();
 
     // Get RxQueue content and release lock asap. Return if empty.
-    std::unique_ptr<std::vector<char>> rxMessage;
-    {
-        std::scoped_lock lock(_RxQueueMutex);
-        if (_RxQueue.empty())
-            return {};
-        rxMessage = std::move(_RxQueue.front());
-        _RxQueue.pop();
-    }
+    _RxQueueMutex.lock();
+    if (_RxQueue.empty()) {
+        _RxQueueMutex.unlock();
+        return {};
+    };
+    auto rxMessage = std::move(_RxQueue.front());
+    _RxQueue.pop();
+    _RxQueueMutex.unlock();
 
-    // create python bytes object from vector
-    auto nbbytes = new nanobind::bytes(&rxMessage->front(), rxMessage->size());
-    return std::move(*nbbytes);
+    // create python bytes object from vector;
+    return nanobind::bytes(&rxMessage->front(), rxMessage->size());
 }
 
 auto PipeConnection::MonitorIoCompletion() -> void
@@ -225,8 +238,9 @@ auto PipeConnection::MonitorIoCompletion() -> void
             bytesReadTotal = 0; // reset bytesReadTotal
 
             // push the new vector to the queue
-            std::scoped_lock lock(_RxQueueMutex);
+            _RxQueueMutex.lock();
             _RxQueue.push(std::move(rxMessageOut));
+            _RxQueueMutex.unlock();
 
             // reset rxOv and start next receive operation
             rxOv = OVERLAPPED{0};

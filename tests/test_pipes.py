@@ -12,7 +12,7 @@ def test_module():
 
 
 def test_duplex():
-    c1, c2 = win_pipes.Pipe(duplex=True)
+    c1, c2 = win_pipes.Pipe(duplex=True, start_thread=True)
     assert c1.readable
     assert c1.writable
     assert c2.readable
@@ -55,7 +55,7 @@ def test_duplex():
 
 
 def test_non_duplex():
-    c1, c2 = win_pipes.Pipe(duplex=False)
+    c1, c2 = win_pipes.Pipe(duplex=False, start_thread=True)
     assert c1.readable
     assert not c1.writable
     assert not c2.readable
@@ -102,7 +102,7 @@ def test_context_manager():
 
 
 def test_broken_pipe_rx():
-    rx, tx = win_pipes.Pipe(False)
+    rx, tx = win_pipes.Pipe(False, start_thread=True)
 
     tx.close()
     time.sleep(0.001)
@@ -115,7 +115,7 @@ def test_broken_pipe_rx():
 
 
 def test_broken_pipe_tx():
-    rx, tx = win_pipes.Pipe(False)
+    rx, tx = win_pipes.Pipe(False, start_thread=True)
 
     rx.close()
     with pytest.raises(RuntimeError):
