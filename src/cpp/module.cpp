@@ -7,6 +7,7 @@
 #include <nanobind/stl/tuple.h>
 
 #include "./Pipe.h"
+#include "./PipeClient.h"
 #include "./PipeConnection.h"
 #include "./PipeListener.h"
 #include "./util.h"
@@ -70,7 +71,7 @@ NB_MODULE(_ext, m)
             "exc_type"_a.none(),
             "exc_value"_a.none(),
             "traceback"_a.none());
-    ;
+    m.def("PipeClient", &pipeClient, "address"_a);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = STRINGIFY(VERSION_INFO);

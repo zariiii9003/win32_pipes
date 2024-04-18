@@ -26,6 +26,7 @@ nanobind_add_module(
   NB_STATIC
   src/cpp/module.cpp
   src/cpp/Pipe.cpp
+  src/cpp/PipeClient.cpp
   src/cpp/PipeConnection.cpp
   src/cpp/PipeListener.cpp
   src/cpp/util.cpp)
