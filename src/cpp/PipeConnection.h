@@ -47,7 +47,8 @@ class PipeConnection {
                    const std::optional<size_t> size     = {},
                    const bool                  blocking = false) -> void;
 
-    auto recvBytes() -> std::optional<nanobind::bytes>;
+    auto recvBytes(std::optional<int> maxLength = {})
+        -> std::optional<nanobind::bytes>;
 
     auto close() -> void;
 

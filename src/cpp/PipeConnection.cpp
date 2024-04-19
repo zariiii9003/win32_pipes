@@ -124,7 +124,8 @@ auto PipeConnection::sendBytes(const nanobind::bytes       buffer,
     }
 }
 
-auto PipeConnection::recvBytes() -> std::optional<nanobind::bytes>
+auto PipeConnection::recvBytes(std::optional<int> maxLength)
+    -> std::optional<nanobind::bytes>
 {
     if (_closed)
         throw std::exception("handle is closed");
