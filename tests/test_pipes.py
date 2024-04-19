@@ -1,4 +1,6 @@
+import multiprocessing
 import time
+from typing import List
 
 import pytest
 
@@ -129,3 +131,32 @@ def test_broken_pipe_tx():
     tx.close()
     assert rx.closed
     assert tx.closed
+
+
+def _send_from_subprocess(c: win_pipes.PipeConnection, messages: List[bytes]):
+    c.start_thread()
+    for msg in messages:
+        c.send_bytes(msg, blocking=True)
+    assert c.recv_bytes() is None
+    c.close()
+
+
+def test_multiprocessing():
+    c1, c2 = win_pipes.Pipe(duplex=True)
+    c1.start_thread()
+
+    messages = [b"Message1", b"Message1", b"Message3"]
+
+    p = multiprocessing.Process(target=_send_from_subprocess, args=(c2, messages))
+    p.start()
+
+    for tx_data in messages:
+        while True:
+            rx_data = c1.recv_bytes()
+            if rx_data:
+                break
+        assert rx_data == tx_data
+
+    p.join()
+    assert p.exitcode == 0
+    c1.close()

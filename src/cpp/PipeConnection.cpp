@@ -65,7 +65,8 @@ auto PipeConnection::getClosed() -> bool { return _closed; }
 
 auto PipeConnection::sendBytes(const nanobind::bytes       buffer,
                                const size_t                offset,
-                               const std::optional<size_t> size) -> void
+                               const std::optional<size_t> size,
+                               const bool                  blocking) -> void
 {
     if (_closed)
         throw std::exception("handle is closed");
@@ -109,6 +110,16 @@ auto PipeConnection::sendBytes(const nanobind::bytes       buffer,
                 break;
             default:
                 cleanupAndThrowExc(errNo);
+        }
+    }
+
+    if (blocking) {
+        DWORD numberOfBytesTransferred;
+        if (!GetOverlappedResult(_handle,
+                                 &pOdRaw->overlapped,
+                                 &numberOfBytesTransferred,
+                                 TRUE)) {
+            cleanupAndThrowExc();
         }
     }
 }

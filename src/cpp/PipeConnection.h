@@ -43,8 +43,9 @@ class PipeConnection {
     auto getClosed() -> bool;
 
     auto sendBytes(const nanobind::bytes       buffer,
-                   const size_t                offset = 0,
-                   const std::optional<size_t> size   = {}) -> void;
+                   const size_t                offset   = 0,
+                   const std::optional<size_t> size     = {},
+                   const bool                  blocking = false) -> void;
 
     auto recvBytes() -> std::optional<nanobind::bytes>;
 

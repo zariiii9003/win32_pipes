@@ -31,8 +31,9 @@ NB_MODULE(_ext, m)
         .def("send_bytes",
              &PipeConnection::sendBytes,
              "buffer"_a,
-             "offset"_a = 0,
-             "size"_a   = nanobind::none())
+             "offset"_a   = 0,
+             "size"_a     = nanobind::none(),
+             "blocking"_a = false)
         .def("recv_bytes", &PipeConnection::recvBytes)
         .def_prop_ro("closed", &PipeConnection::getClosed)
         .def_prop_ro("readable", &PipeConnection::getReadable)
