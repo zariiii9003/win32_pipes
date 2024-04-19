@@ -30,6 +30,8 @@ auto PipeListener::accept() -> PipeConnection
     if (!ConnectNamedPipe(handle, &ov)) {
         auto errNo = GetLastError();
         switch (errNo) {
+            case ERROR_IO_PENDING:
+                break;
             default: {
                 CloseHandle(handle);
                 CloseHandle(ov.hEvent);
@@ -38,7 +40,12 @@ auto PipeListener::accept() -> PipeConnection
         }
     }
     HANDLE handles[2] = {_closeEvent, ov.hEvent};
-    auto   waitRes    = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
+    DWORD  waitRes;
+    {
+        // release global interpreter lock before waiting
+        auto nogil = nanobind::gil_scoped_release();
+        waitRes    = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
+    }
     switch (waitRes) {
         case WAIT_OBJECT_0:
             CloseHandle(handle);
