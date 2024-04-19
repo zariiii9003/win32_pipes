@@ -4,17 +4,17 @@ from typing import List
 
 import pytest
 
-import win_pipes
+import win32_pipes
 
 
 def test_module():
-    assert hasattr(win_pipes, "__version__")
-    assert hasattr(win_pipes, "Pipe")
-    assert hasattr(win_pipes, "PipeConnection")
+    assert hasattr(win32_pipes, "__version__")
+    assert hasattr(win32_pipes, "Pipe")
+    assert hasattr(win32_pipes, "PipeConnection")
 
 
 def test_duplex():
-    c1, c2 = win_pipes.Pipe(duplex=True, start_thread=True)
+    c1, c2 = win32_pipes.Pipe(duplex=True, start_thread=True)
     assert c1.readable
     assert c1.writable
     assert c2.readable
@@ -57,7 +57,7 @@ def test_duplex():
 
 
 def test_non_duplex():
-    c1, c2 = win_pipes.Pipe(duplex=False, start_thread=True)
+    c1, c2 = win32_pipes.Pipe(duplex=False, start_thread=True)
     assert c1.readable
     assert not c1.writable
     assert not c2.readable
@@ -98,7 +98,7 @@ def test_non_duplex():
 
 
 def test_context_manager():
-    rx, tx = win_pipes.Pipe(False)
+    rx, tx = win32_pipes.Pipe(False)
     with rx as rx, tx as tx:
         tx.send_bytes(b"test")
         time.sleep(0.1)
@@ -109,7 +109,7 @@ def test_context_manager():
 
 
 def test_broken_pipe_rx():
-    rx, tx = win_pipes.Pipe(False, start_thread=True)
+    rx, tx = win32_pipes.Pipe(False, start_thread=True)
     tx.close()
     time.sleep(0.001)
 
@@ -122,7 +122,7 @@ def test_broken_pipe_rx():
 
 
 def test_broken_pipe_tx():
-    rx, tx = win_pipes.Pipe(False, start_thread=True)
+    rx, tx = win32_pipes.Pipe(False, start_thread=True)
     rx.close()
 
     with pytest.raises(BrokenPipeError):
@@ -133,7 +133,7 @@ def test_broken_pipe_tx():
     assert tx.closed
 
 
-def _send_from_subprocess(c: win_pipes.PipeConnection, messages: List[bytes]):
+def _send_from_subprocess(c: win32_pipes.PipeConnection, messages: List[bytes]):
     c.start_thread()
     for msg in messages:
         c.send_bytes(msg, blocking=True)
@@ -142,7 +142,7 @@ def _send_from_subprocess(c: win_pipes.PipeConnection, messages: List[bytes]):
 
 
 def test_multiprocessing():
-    c1, c2 = win_pipes.Pipe(duplex=True)
+    c1, c2 = win32_pipes.Pipe(duplex=True)
     c1.start_thread()
 
     messages = [b"Message1", b"Message1", b"Message3"]

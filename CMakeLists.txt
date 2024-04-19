@@ -36,4 +36,4 @@ set_property(TARGET _ext PROPERTY CXX_STANDARD 20)
 target_compile_definitions(_ext PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 # Install directive for scikit-build-core
-install(TARGETS _ext LIBRARY DESTINATION win_pipes)
+install(TARGETS _ext LIBRARY DESTINATION win32_pipes)

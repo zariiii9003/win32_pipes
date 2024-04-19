@@ -7,7 +7,7 @@ from multiprocessing import reduction
 
 import _winapi
 
-from win_pipes._ext import Pipe, PipeClient, PipeConnection, PipeListener, __version__
+from win32_pipes._ext import Pipe, PipeClient, PipeConnection, PipeListener, __version__
 
 __all__ = ["__version__", "Pipe", "PipeConnection", "PipeListener", "PipeClient"]
 
