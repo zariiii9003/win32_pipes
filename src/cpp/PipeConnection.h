@@ -64,7 +64,6 @@ class PipeConnection {
     std::mutex                                     _TxQueueMutex;
     std::thread                                    _thread;
     DWORD                                          _threadErr{0};
-    std::optional<std::string>                     _threadErrContext;
     OVERLAPPED                                     _rxOv{0};
     std::vector<char>                              _RxBuffer{0};
     std::queue<std::unique_ptr<std::vector<char>>> _RxQueue;
