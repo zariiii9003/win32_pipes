@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "win32_pipes"
-version = "0.0.1"
+version = "0.1.0"
 description="A non-blocking C++ NamedPipe implementation for Windows."
 readme = "README.md"
 authors = [

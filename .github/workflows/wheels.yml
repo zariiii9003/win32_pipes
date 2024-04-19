@@ -50,10 +50,15 @@ jobs:
         with:
           path: dist/*.tar.gz
 
-  upload_pypi:
+  pypi-publish:
     name: Create release
     needs: [ build_wheels, build_sdist ]
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/win32_pipes
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
 
     # create a new release for tagged commits
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -63,10 +68,8 @@ jobs:
           name: artifact
           path: dist
 
-      - uses: pypa/gh-action-pypi-publish@v1
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
 
       - name: Release
         uses: softprops/action-gh-release@v2
