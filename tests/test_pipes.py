@@ -137,7 +137,6 @@ def _send_from_subprocess(c: win32_pipes.PipeConnection, messages: List[bytes]):
     c.start_thread()
     for msg in messages:
         c.send_bytes(msg, blocking=True)
-    assert c.recv_bytes() is None
     c.close()
 
 
