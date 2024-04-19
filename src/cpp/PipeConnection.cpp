@@ -131,14 +131,14 @@ auto PipeConnection::recvBytes() -> std::optional<nanobind::bytes>
     if (!_readable)
         throw std::exception("connection is write-only");
     if (!_started)
-        throw std::exception("thread was not started yet");
-
-    checkThread();
+        throw std::exception(
+            "Thread was not started yet. Use PipeConnection.start_thread().");
 
     // Get RxQueue content and release lock asap. Return if empty.
     _RxQueueMutex.lock();
     if (_RxQueue.empty()) {
         _RxQueueMutex.unlock();
+        checkThread();
         return {};
     };
     auto rxMessage = std::move(_RxQueue.front());
