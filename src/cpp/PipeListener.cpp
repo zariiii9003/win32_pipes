@@ -23,6 +23,7 @@ auto PipeListener::accept() -> PipeConnection
     _handleQueueMutex.lock();
     _handleQueue.push(newHandle(false));
     auto handle = _handleQueue.front();
+    _handleQueue.pop();
     _handleQueueMutex.unlock();
 
     auto ov   = OVERLAPPED{0};
