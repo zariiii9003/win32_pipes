@@ -25,7 +25,7 @@ class PipeListener {
   public:
     PipeListener(std::string address, std::optional<size_t> backlog = {});
     ~PipeListener();
-    auto accept() -> PipeConnection;
+    auto accept() -> PipeConnection *;
     auto close() -> void;
     auto getAddress() -> std::string;
 };

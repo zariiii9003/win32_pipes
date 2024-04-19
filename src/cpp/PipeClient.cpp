@@ -6,8 +6,10 @@
 #include "./PipeConnection.h"
 #include "./util.h"
 #include <Windows.h>
+#include <string>
+#include <utility>
 
-auto pipeClient(std::string address) -> PipeConnection
+auto pipeClient(std::string address) -> PipeConnection *
 {
     auto handle = CreateFile(address.c_str(),
                              GENERIC_READ | GENERIC_WRITE,
@@ -17,11 +19,11 @@ auto pipeClient(std::string address) -> PipeConnection
                              FILE_FLAG_OVERLAPPED,
                              NULL);
     if (handle == INVALID_HANDLE_VALUE)
-        Win32ErrorExit(0);
+        Win32ErrorExit();
 
     DWORD mode{PIPE_READMODE_MESSAGE};
     if (!SetNamedPipeHandleState(handle, &mode, nullptr, nullptr))
-        Win32ErrorExit(0);
+        Win32ErrorExit();
 
-    return PipeConnection(reinterpret_cast<size_t>(handle));
+    return new PipeConnection(reinterpret_cast<size_t>(handle));
 }

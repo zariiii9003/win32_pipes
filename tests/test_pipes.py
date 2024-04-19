@@ -1,5 +1,8 @@
 import multiprocessing
+import os
+import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import List
 
 import pytest
@@ -11,6 +14,9 @@ def test_module():
     assert hasattr(win32_pipes, "__version__")
     assert hasattr(win32_pipes, "Pipe")
     assert hasattr(win32_pipes, "PipeConnection")
+    assert hasattr(win32_pipes, "PipeClient")
+    assert hasattr(win32_pipes, "PipeListener")
+    assert hasattr(win32_pipes, "generate_pipe_address")
 
 
 def test_duplex():
@@ -133,10 +139,54 @@ def test_broken_pipe_tx():
     assert tx.closed
 
 
+def test_generate_pipe_address():
+    address = win32_pipes.generate_pipe_address()
+    assert re.match(rf"\\\\.\\pipe\\win32_pipes-{os.getpid()}-\d+-", address)
+
+
+def test_pipe_listener():
+    def listen(_listener: win32_pipes.PipeListener):
+        server = _listener.accept()
+        server.start_thread()
+        server.send_bytes(b"Hello", blocking=True)
+        server.close()
+        _listener.close()
+
+    address = win32_pipes.generate_pipe_address()
+    listener = win32_pipes.PipeListener(address)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(listen, listener)
+
+        # connect to listener
+        client = win32_pipes.PipeClient(address)
+        client.start_thread()
+        while True:
+            rx_data = client.recv_bytes()
+            if rx_data:
+                break
+        assert rx_data == b"Hello"
+        client.close()
+        future.result()
+
+
+def test_pipe_listener_close():
+    def listen(_listener: win32_pipes.PipeListener):
+        _listener.accept()
+
+    address = win32_pipes.generate_pipe_address()
+    listener = win32_pipes.PipeListener(address)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(listen, listener)
+        listener.close()
+        with pytest.raises(RuntimeError):
+            future.result()
+
+
 def _send_from_subprocess(c: win32_pipes.PipeConnection, messages: List[bytes]):
     c.start_thread()
     for msg in messages:
         c.send_bytes(msg, blocking=True)
+    time.sleep(0.5)
     c.close()
 
 

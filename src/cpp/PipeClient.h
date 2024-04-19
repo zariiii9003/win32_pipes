@@ -8,6 +8,6 @@
 #include "./PipeConnection.h"
 #include <string>
 
-auto pipeClient(std::string address) -> PipeConnection;
+auto pipeClient(std::string address) -> PipeConnection *;
 
 #endif

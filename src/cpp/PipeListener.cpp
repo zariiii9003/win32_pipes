@@ -18,7 +18,7 @@ PipeListener::~PipeListener()
         close();
 }
 
-auto PipeListener::accept() -> PipeConnection
+auto PipeListener::accept() -> PipeConnection *
 {
     _handleQueueMutex.lock();
     _handleQueue.push(newHandle(false));
@@ -55,7 +55,7 @@ auto PipeListener::accept() -> PipeConnection
             break;
         case WAIT_OBJECT_0 + 1:
             CloseHandle(ov.hEvent);
-            return PipeConnection(reinterpret_cast<size_t>(handle));
+            return new PipeConnection(reinterpret_cast<size_t>(handle));
         default: {
             CloseHandle(handle);
             CloseHandle(ov.hEvent);

@@ -10,11 +10,9 @@ static std::mutex _mmap_counter_lock;
 auto generatePipeAddress() -> std::string
 {
     std::scoped_lock lock(_mmap_counter_lock);
-    auto             newAddress = std::format("\\\\.\\pipe\\pyc-{}-{}-",
-                                  GetCurrentProcessId(),
-                                  _mmap_counter);
-    _mmap_counter++;
-    return newAddress;
+    return std::format("\\\\.\\pipe\\win32_pipes-{}-{}-",
+                       GetCurrentProcessId(),
+                       _mmap_counter++);
 }
 
 auto pipe(bool duplex,

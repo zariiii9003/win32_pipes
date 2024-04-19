@@ -7,9 +7,23 @@ from multiprocessing import reduction
 
 import _winapi
 
-from win32_pipes._ext import Pipe, PipeClient, PipeConnection, PipeListener, __version__
+from win32_pipes._ext import (
+    Pipe,
+    PipeClient,
+    PipeConnection,
+    PipeListener,
+    __version__,
+    generate_pipe_address,
+)
 
-__all__ = ["__version__", "Pipe", "PipeConnection", "PipeListener", "PipeClient"]
+__all__ = [
+    "__version__",
+    "Pipe",
+    "PipeConnection",
+    "PipeListener",
+    "PipeClient",
+    "generate_pipe_address",
+]
 
 
 def reduce_pipe_connection(conn: PipeConnection) -> typing.Any:

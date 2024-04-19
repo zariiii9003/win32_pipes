@@ -53,6 +53,7 @@ NB_MODULE(_ext, m)
             "exc_value"_a.none(),
             "traceback"_a.none());
 
+    m.def("generate_pipe_address", &generatePipeAddress);
     m.def("Pipe", &pipe, "duplex"_a = true, "start_thread"_a = false);
 
     nanobind::class_<PipeListener>(m, "PipeListener")
