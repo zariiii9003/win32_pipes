@@ -165,8 +165,6 @@ auto PipeConnection::monitorIoCompletion() -> void
                       &_rxOv)) {
             auto errNo = GetLastError();
             if (errNo != ERROR_IO_PENDING) {
-                _threadErrContext =
-                    "PipeConnection::MonitorIoCompletion.ReadFile";
                 goto threadExit;
             }
         }
@@ -183,7 +181,6 @@ auto PipeConnection::monitorIoCompletion() -> void
                                                  INFINITE);
         if (pOv == nullptr) {
             // GetQueuedCompletionStatus failed
-            _threadErrContext = "MonitorIoCompletion.GetQueuedCompletionStatus";
             goto threadExit;
         }
         else if (pOv == &_rxOv) {
@@ -215,8 +212,6 @@ auto PipeConnection::monitorIoCompletion() -> void
                                   &_rxOv)) {
                         auto errNo = GetLastError();
                         if (errNo != ERROR_IO_PENDING) {
-                            _threadErrContext =
-                                "PipeConnection::MonitorIoCompletion.ReadFile";
                             goto threadExit;
                         }
                     }
@@ -244,15 +239,11 @@ auto PipeConnection::monitorIoCompletion() -> void
                                   bytesLeftThisMessage,
                                   nullptr,
                                   &_rxOv)) {
-                        _threadErrContext =
-                            "PipeConnection::MonitorIoCompletion.ReadFile";
                         goto threadExit;
                     }
                     break;
                 }
                 default: {
-                    _threadErrContext = "PipeConnection::MonitorIoCompletion."
-                                        "GetOverlappedResult.1";
                     goto threadExit;
                 }
             }
@@ -268,7 +259,6 @@ auto PipeConnection::monitorIoCompletion() -> void
                                      pOv,
                                      &numberOfBytesTransferred,
                                      false)) {
-                _threadErrContext = "MonitorIoCompletion.GetOverlappedResult.2";
                 goto threadExit;
             }
         }
@@ -280,12 +270,7 @@ threadExit:
 inline auto PipeConnection::checkThread() -> void
 {
     if (_threadErr != ERROR_SUCCESS)
-        if (_threadErrContext.has_value()) {
-            cleanupAndThrowExc(_threadErr);
-        }
-        else {
-            cleanupAndThrowExc(_threadErr);
-        }
+        cleanupAndThrowExc(_threadErr);
 }
 
 auto PipeConnection::cleanupAndThrowExc(DWORD errNo) -> void
