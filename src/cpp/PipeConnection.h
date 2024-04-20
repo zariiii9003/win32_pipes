@@ -61,13 +61,13 @@ class PipeConnection {
     bool                                           _closed  = false;
     bool                                           _started = false;
     HANDLE                                         _completionPort;
-    std::queue<std::unique_ptr<OverlappedData>>    _TxQueue;
+    std::queue<std::shared_ptr<OverlappedData>>    _TxQueue;
     std::mutex                                     _TxQueueMutex;
     std::thread                                    _thread;
     DWORD                                          _threadErr{0};
     OVERLAPPED                                     _rxOv{0};
     std::vector<char>                              _RxBuffer{0};
-    std::queue<std::unique_ptr<std::vector<char>>> _RxQueue;
+    std::queue<std::shared_ptr<std::vector<char>>> _RxQueue;
     std::mutex                                     _RxQueueMutex;
 
     void        monitorIoCompletion();

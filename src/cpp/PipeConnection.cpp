@@ -91,17 +91,17 @@ auto PipeConnection::sendBytes(const nanobind::bytes       buffer,
     // create OverlappedObject and push it to the queue before starting
     // WriteFile(), otherwise the monitor thread might try to clean up before it
     // is inserted
-    auto pOdRaw = new OverlappedData(buffer.c_str() + offset, _size);
+    auto pOd = std::shared_ptr<OverlappedData>(
+        new OverlappedData(buffer.c_str() + offset, _size));
     {
-        auto             pOdUnique = std::unique_ptr<OverlappedData>(pOdRaw);
         std::scoped_lock lock(_TxQueueMutex);
-        _TxQueue.push(std::move(pOdUnique));
+        _TxQueue.push(pOd);
     }
     if (!WriteFile(_handle,
-                   &pOdRaw->vector.front(),
-                   pOdRaw->vector.size(),
+                   &pOd->vector.front(),
+                   pOd->vector.size(),
                    NULL,
-                   &pOdRaw->overlapped)) {
+                   &pOd->overlapped)) {
         auto errNo = GetLastError();
         switch (errNo) {
             case ERROR_SUCCESS:
@@ -116,7 +116,7 @@ auto PipeConnection::sendBytes(const nanobind::bytes       buffer,
     if (blocking) {
         DWORD numberOfBytesTransferred;
         if (!GetOverlappedResult(_handle,
-                                 &pOdRaw->overlapped,
+                                 &pOd->overlapped,
                                  &numberOfBytesTransferred,
                                  TRUE)) {
             cleanupAndThrowExc();
@@ -192,7 +192,7 @@ auto PipeConnection::monitorIoCompletion() -> void
             switch (ovRes) {
                 case ERROR_SUCCESS: { // create new vector, which will be saved
                                       // in RxQueue
-                    auto rxMessageOut = std::unique_ptr<std::vector<char>>(
+                    auto rxMessageOut = std::shared_ptr<std::vector<char>>(
                         new std::vector<char>(BUFSIZE));
                     rxMessageOut->swap(_RxBuffer);
                     rxMessageOut->resize(bytesReadTotal);
@@ -201,7 +201,7 @@ auto PipeConnection::monitorIoCompletion() -> void
 
                     // push the new vector to the queue
                     _RxQueueMutex.lock();
-                    _RxQueue.push(std::move(rxMessageOut));
+                    _RxQueue.push(rxMessageOut);
                     _RxQueueMutex.unlock();
 
                     // reset rxOv and start next receive operation
