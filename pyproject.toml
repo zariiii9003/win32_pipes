@@ -11,6 +11,12 @@ authors = [
   { name = "Artur Drogunow", email = "Artur.Drogunow@zf.com" },
 ]
 requires-python = ">=3.8"
+license = { text = "MIT" }
+keywords = [
+  "Windows",
+  "Named Pipes",
+  "IPC",
+]
 classifiers = [
   "Development Status :: 4 - Beta",
   "License :: OSI Approved :: MIT License",
@@ -21,6 +27,11 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
 ]
+
+[project.urls]
+Issues = "https://github.com/zariiii9003/win32_pipes/issues"
+Source = "https://github.com/zariiii9003/win32_pipes"
+Homepage = "https://github.com/zariiii9003/win32_pipes"
 
 [project.optional-dependencies]
 dev = [
