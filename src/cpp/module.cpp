@@ -21,11 +21,10 @@ NB_MODULE(_ext, m)
 {
     nanobind::register_exception_translator(systemErrorToOsError);
     nanobind::class_<PipeConnection>(m, "PipeConnection")
-        .def(nanobind::init<const size_t, const bool, const bool>(),
+        .def(nanobind::init<size_t, bool, bool>(),
              "handle"_a,
              "readable"_a = true,
              "writable"_a = true)
-        .def("start_thread", &PipeConnection::startThread)
         .def("close", &PipeConnection::close)
         .def("fileno", &PipeConnection::getHandle)
         .def("send_bytes",
@@ -33,18 +32,15 @@ NB_MODULE(_ext, m)
              "buffer"_a,
              "offset"_a   = 0,
              "size"_a     = nanobind::none(),
-             "blocking"_a = false)
+             "blocking"_a = true)
         .def("recv_bytes",
              &PipeConnection::recvBytes,
-             "maxlength"_a = nanobind::none())
+             "maxlength"_a = nanobind::none(),
+             "blocking"_a  = true)
         .def_prop_ro("closed", &PipeConnection::getClosed)
         .def_prop_ro("readable", &PipeConnection::getReadable)
         .def_prop_ro("writable", &PipeConnection::getWritable)
-        .def("__enter__",
-             [](PipeConnection &pc) {
-                 pc.startThread();
-                 return &pc;
-             })
+        .def("__enter__", [](PipeConnection &pc) { return &pc; })
         .def(
             "__exit__",
             [](PipeConnection &pc,
@@ -56,7 +52,7 @@ NB_MODULE(_ext, m)
             "traceback"_a.none());
 
     m.def("generate_pipe_address", &generatePipeAddress);
-    m.def("Pipe", &pipe, "duplex"_a = true, "start_thread"_a = false);
+    m.def("Pipe", &pipe, "duplex"_a = true);
 
     nanobind::class_<PipeListener>(m, "PipeListener")
         .def(nanobind::init<std::string, std::optional<size_t>>(),

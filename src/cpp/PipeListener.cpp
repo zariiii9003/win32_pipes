@@ -31,6 +31,9 @@ auto PipeListener::accept() -> PipeConnection *
     if (!ConnectNamedPipe(handle, &ov)) {
         auto errNo = GetLastError();
         switch (errNo) {
+            case ERROR_PIPE_CONNECTED:
+                CloseHandle(ov.hEvent);
+                return new PipeConnection(reinterpret_cast<size_t>(handle));
             case ERROR_IO_PENDING:
                 break;
             default: {
@@ -59,8 +62,7 @@ auto PipeListener::accept() -> PipeConnection *
         default: {
             CloseHandle(handle);
             CloseHandle(ov.hEvent);
-            cleanupAndThrowExc(0);
-            throw std::runtime_error("Should be unreachable");
+            cleanupAndThrowExc();
         }
     }
 }
@@ -103,5 +105,4 @@ auto PipeListener::cleanupAndThrowExc(DWORD errNo) -> void
 {
     close();
     Win32ErrorExit(errNo);
-    throw std::runtime_error("This should not be reached.");
 }

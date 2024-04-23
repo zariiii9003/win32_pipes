@@ -7,13 +7,11 @@
 #include <Windows.h>
 #include <system_error>
 
-extern auto Win32ErrorExit(DWORD errNo) -> void
+[[noreturn]] extern auto Win32ErrorExit(DWORD errNo) -> void
 {
     DWORD _errNo = errNo == 0 ? GetLastError() : errNo;
-    if (_errNo != ERROR_SUCCESS) {
-        auto ec = std::error_code(_errNo, std::system_category());
-        throw std::system_error(ec);
-    }
+    auto  ec     = std::error_code(_errNo, std::system_category());
+    throw std::system_error(ec);
 }
 
 extern auto systemErrorToOsError(const std::exception_ptr &eptr,

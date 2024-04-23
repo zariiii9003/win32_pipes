@@ -20,7 +20,7 @@ def test_module():
 
 
 def test_duplex():
-    c1, c2 = win32_pipes.Pipe(duplex=True, start_thread=True)
+    c1, c2 = win32_pipes.Pipe(duplex=True)
     assert c1.readable
     assert c1.writable
     assert c2.readable
@@ -35,26 +35,24 @@ def test_duplex():
     tx_data_1mb = tx_data_1kb * 1024
 
     # send from c1 to c2
-    c1.send_bytes(tx_data_1kb)
-    c1.send_bytes(tx_data_1mb)
-    c1.send_bytes(tx_data_256b)
-    time.sleep(0.5)
+    c1.send_bytes(tx_data_1kb, blocking=False)
+    c1.send_bytes(tx_data_1mb, blocking=False)
+    c1.send_bytes(tx_data_256b, blocking=False)
     assert c2.recv_bytes() == tx_data_1kb
     assert c2.recv_bytes() == tx_data_1mb
     assert c2.recv_bytes() == tx_data_256b
-    assert c1.recv_bytes() is None
-    assert c2.recv_bytes() is None
+    assert c1.recv_bytes(blocking=False) is None
+    assert c2.recv_bytes(blocking=False) is None
 
     # send from c2 to c1
-    c2.send_bytes(tx_data_1kb)
-    c2.send_bytes(tx_data_1mb)
-    c2.send_bytes(tx_data_256b)
-    time.sleep(0.5)
+    c2.send_bytes(tx_data_1kb, blocking=False)
+    c2.send_bytes(tx_data_1mb, blocking=False)
+    c2.send_bytes(tx_data_256b, blocking=False)
     assert c1.recv_bytes() == tx_data_1kb
     assert c1.recv_bytes() == tx_data_1mb
     assert c1.recv_bytes() == tx_data_256b
-    assert c1.recv_bytes() is None
-    assert c2.recv_bytes() is None
+    assert c1.recv_bytes(blocking=False) is None
+    assert c2.recv_bytes(blocking=False) is None
 
     c1.close()
     c2.close()
@@ -63,7 +61,7 @@ def test_duplex():
 
 
 def test_non_duplex():
-    c1, c2 = win32_pipes.Pipe(duplex=False, start_thread=True)
+    c1, c2 = win32_pipes.Pipe(duplex=False)
     assert c1.readable
     assert not c1.writable
     assert not c2.readable
@@ -79,18 +77,17 @@ def test_non_duplex():
     tx_data_10mb = tx_data_1mb * 10
 
     # send from c2 to c1
-    c2.send_bytes(tx_data_1kb)
-    c2.send_bytes(tx_data_1mb)
-    c2.send_bytes(tx_data_256b)
-    c2.send_bytes(tx_data_10mb)
-    c2.send_bytes(tx_data_256b)
-    time.sleep(0.5)
+    c2.send_bytes(tx_data_1kb, blocking=False)
+    c2.send_bytes(tx_data_1mb, blocking=False)
+    c2.send_bytes(tx_data_256b, blocking=False)
+    c2.send_bytes(tx_data_10mb, blocking=False)
+    c2.send_bytes(tx_data_256b, blocking=False)
     assert c1.recv_bytes() == tx_data_1kb
     assert c1.recv_bytes() == tx_data_1mb
     assert c1.recv_bytes() == tx_data_256b
     assert c1.recv_bytes() == tx_data_10mb
     assert c1.recv_bytes() == tx_data_256b
-    assert c1.recv_bytes() is None
+    assert c1.recv_bytes(blocking=False) is None
 
     with pytest.raises(RuntimeError):
         c1.send_bytes(tx_data_256b)
@@ -106,8 +103,7 @@ def test_non_duplex():
 def test_context_manager():
     rx, tx = win32_pipes.Pipe(False)
     with rx as rx, tx as tx:
-        tx.send_bytes(b"test")
-        time.sleep(0.1)
+        tx.send_bytes(b"test", blocking=False)
         assert rx.recv_bytes() == b"test"
 
     assert rx.closed
@@ -115,7 +111,7 @@ def test_context_manager():
 
 
 def test_broken_pipe_rx():
-    rx, tx = win32_pipes.Pipe(False, start_thread=True)
+    rx, tx = win32_pipes.Pipe(False)
     tx.close()
     time.sleep(0.001)
 
@@ -128,7 +124,7 @@ def test_broken_pipe_rx():
 
 
 def test_broken_pipe_tx():
-    rx, tx = win32_pipes.Pipe(False, start_thread=True)
+    rx, tx = win32_pipes.Pipe(False)
     rx.close()
 
     with pytest.raises(BrokenPipeError):
@@ -145,25 +141,22 @@ def test_generate_pipe_address():
 
 
 def test_pipe_listener():
-    def listen(_listener: win32_pipes.PipeListener):
-        server = _listener.accept()
-        server.start_thread()
-        server.send_bytes(b"Hello", blocking=True)
-        server.close()
-        _listener.close()
-
     address = win32_pipes.generate_pipe_address()
-    listener = win32_pipes.PipeListener(address)
+
+    def listen():
+        with win32_pipes.PipeListener(address) as listener:
+            server = listener.accept()
+            server.send_bytes(b"Hello")
+            server.close()
+            listener.close()
+
     with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(listen, listener)
+        future = executor.submit(listen)
 
         # connect to listener
         client = win32_pipes.PipeClient(address)
-        client.start_thread()
-        while True:
-            rx_data = client.recv_bytes()
-            if rx_data:
-                break
+        client.send_bytes(b"test")
+        rx_data = client.recv_bytes()
         assert rx_data == b"Hello"
         client.close()
         future.result()
@@ -183,16 +176,14 @@ def test_pipe_listener_close():
 
 
 def _send_from_subprocess(c: win32_pipes.PipeConnection, messages: List[bytes]):
-    c.start_thread()
     for msg in messages:
-        c.send_bytes(msg, blocking=True)
+        c.send_bytes(msg)
     time.sleep(0.5)
     c.close()
 
 
 def test_multiprocessing():
     c1, c2 = win32_pipes.Pipe(duplex=True)
-    c1.start_thread()
 
     messages = [b"Message1", b"Message1", b"Message3"]
 
@@ -200,10 +191,7 @@ def test_multiprocessing():
     p.start()
 
     for tx_data in messages:
-        while True:
-            rx_data = c1.recv_bytes()
-            if rx_data:
-                break
+        rx_data = c1.recv_bytes()
         assert rx_data == tx_data
 
     p.join()

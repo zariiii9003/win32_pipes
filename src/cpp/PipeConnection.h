@@ -27,12 +27,7 @@ class OverlappedData {
 
 class PipeConnection {
   public:
-    PipeConnection(size_t handle,
-                   bool   readable    = true,
-                   bool   writable    = true,
-                   bool   startThread = false);
-
-    auto startThread() -> void;
+    PipeConnection(size_t handle, bool readable = true, bool writable = true);
 
     auto getHandle() const -> size_t;
 
@@ -45,9 +40,10 @@ class PipeConnection {
     auto sendBytes(const nanobind::bytes       buffer,
                    const size_t                offset   = 0,
                    const std::optional<size_t> size     = {},
-                   const bool                  blocking = false) -> void;
+                   const bool                  blocking = true) -> void;
 
-    auto recvBytes(std::optional<int> maxLength = {})
+    auto recvBytes(std::optional<int> maxLength = {},
+                   const bool         blocking  = true)
         -> std::optional<nanobind::bytes>;
 
     auto close() -> void;
@@ -64,15 +60,17 @@ class PipeConnection {
     std::queue<std::shared_ptr<OverlappedData>>    _TxQueue;
     std::mutex                                     _TxQueueMutex;
     std::thread                                    _thread;
-    DWORD                                          _threadErr{0};
+    DWORD                                          _threadErr{ERROR_SUCCESS};
     OVERLAPPED                                     _rxOv{0};
     std::vector<char>                              _RxBuffer{0};
     std::queue<std::shared_ptr<std::vector<char>>> _RxQueue;
     std::mutex                                     _RxQueueMutex;
+    HANDLE _RxQueueEvent{INVALID_HANDLE_VALUE};
 
-    void        monitorIoCompletion();
-    inline void checkThread();
-    void        cleanupAndThrowExc(DWORD errNo = 0);
+    auto              monitorIoCompletion() -> void;
+    inline auto       startThread() -> void;
+    inline auto       checkThread() -> void;
+    [[noreturn]] auto cleanupAndThrowExc(DWORD errNo = 0) -> void;
 };
 
 #endif
