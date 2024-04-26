@@ -89,9 +89,9 @@ auto PipeConnection::sendBytes(const nanobind::bytes       buffer,
                                const std::optional<size_t> size,
                                const bool                  blocking) -> void
 {
-    if (_closed)
+    if (_closed) [[unlikely]]
         throw std::exception("handle is closed");
-    if (!_writable)
+    if (!_writable) [[unlikely]]
         throw std::exception("connection is read-only");
 
     checkThread();
@@ -148,13 +148,13 @@ auto PipeConnection::recvBytes(std::optional<int> maxLength,
                                const bool         blocking)
     -> std::optional<nanobind::bytes>
 {
-    if (!_readable)
+    if (!_readable) [[unlikely]]
         throw std::exception("connection is write-only");
 
     startThread();
 
     while (true) {
-        if (_closed)
+        if (_closed) [[unlikely]]
             throw std::exception("handle is closed");
 
         // Get RxQueue content and release lock asap
@@ -292,9 +292,9 @@ threadExit:
 
 inline auto PipeConnection::checkThread() -> void
 {
-    if (!_started)
+    if (!_started) [[unlikely]]
         startThread();
-    if (_threadErr != ERROR_SUCCESS)
+    if (_threadErr != ERROR_SUCCESS) [[unlikely]]
         cleanupAndThrowExc(_threadErr);
 }
 
