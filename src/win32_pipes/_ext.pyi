@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2024-present Artur Drogunow <artur.drogunow@zf.com>
+#
+# SPDX-License-Identifier: MIT
+
 from contextlib import AbstractContextManager
 from types import TracebackType
 from typing import Self
