@@ -41,6 +41,11 @@ dev = [
   "ruff",
 ]
 
+[tool.scikit-build]
+wheel.packages = ["src/win32_pipes"]
+wheel.py-api = "cp312"
+cmake.version = ">=3.26.1"
+
 [tool.cibuildwheel]
 test-requires = "pytest"
 test-command = "pytest --no-header -vv {project}/tests"
