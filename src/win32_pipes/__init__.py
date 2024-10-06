@@ -2,10 +2,9 @@
 #
 # SPDX-License-Identifier: MIT
 
+import _winapi
 import typing
 from multiprocessing import reduction
-
-import _winapi
 
 from win32_pipes._ext import (
     Pipe,
