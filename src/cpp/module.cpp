@@ -74,10 +74,4 @@ NB_MODULE(_ext, m)
             "exc_value"_a.none(),
             "traceback"_a.none());
     m.def("PipeClient", &pipeClient, "address"_a);
-
-#ifdef VERSION_INFO
-    m.attr("__version__") = STRINGIFY(VERSION_INFO);
-#else
-    m.attr("__version__") = "dev";
-#endif
 }

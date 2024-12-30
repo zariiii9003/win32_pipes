@@ -11,9 +11,9 @@ from win32_pipes._ext import (
     PipeClient,
     PipeConnection,
     PipeListener,
-    __version__,
     generate_pipe_address,
 )
+from win32_pipes._version import __version__
 
 __all__ = [
     "Pipe",

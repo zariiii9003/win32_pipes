@@ -6,8 +6,6 @@ from contextlib import AbstractContextManager
 from types import TracebackType
 from typing import Self
 
-__version__: str
-
 class PipeConnection(AbstractContextManager[PipeConnection]):
     def __init__(
         self,
