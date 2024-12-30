@@ -21,7 +21,7 @@ include(FetchContent)
 FetchContent_Declare(
   nanobind
   GIT_REPOSITORY https://github.com/wjakob/nanobind.git
-  GIT_TAG v2.2.0)
+  GIT_TAG v2.4.0)
 FetchContent_MakeAvailable(nanobind)
 
 nanobind_add_module(
@@ -41,3 +41,9 @@ target_compile_definitions(_ext PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 # Install directive for scikit-build-core
 install(TARGETS _ext LIBRARY DESTINATION win32_pipes)
+
+# Copy 3rd party license files
+install(
+  FILES "${nanobind_SOURCE_DIR}/LICENSE"
+  DESTINATION "${SKBUILD_METADATA_DIR}/licenses"
+  RENAME "NANOBIND_LICENSE")
