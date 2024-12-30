@@ -14,8 +14,8 @@
     throw std::system_error(ec);
 }
 
-extern auto systemErrorToOsError(const std::exception_ptr &eptr,
-                                 void                     *data) -> void
+extern auto systemErrorToOsError(const std::exception_ptr &eptr, void *data)
+    -> void
 {
     try {
         std::rethrow_exception(eptr);

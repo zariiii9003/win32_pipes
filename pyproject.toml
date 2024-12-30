@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core>=0.8.2"]
+requires = ["scikit-build-core"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -59,9 +59,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 src = ["src"]
-
-[tool.ruff.lint]
-extend-select = [
+lint.extend-select = [
   "B",           # flake8-bugbear
   "I",           # isort
   "ARG",         # flake8-unused-arguments

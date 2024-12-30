@@ -16,11 +16,11 @@ from win32_pipes._ext import (
 )
 
 __all__ = [
-    "__version__",
     "Pipe",
+    "PipeClient",
     "PipeConnection",
     "PipeListener",
-    "PipeClient",
+    "__version__",
     "generate_pipe_address",
 ]
 
