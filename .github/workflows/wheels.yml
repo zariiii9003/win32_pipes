@@ -2,6 +2,8 @@ name: Build & Release
 
 on: [push, pull_request]
 
+permissions: {}
+
 env:
   PY_COLORS: "1"
 
@@ -12,12 +14,12 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # 4.2.2
         with:
-          submodules: "recursive"
+          persist-credentials: false
 
       # Used to host cibuildwheel
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38  # 5.4.0
         with:
           python-version: "3.11"
 
@@ -27,7 +29,7 @@ jobs:
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # 4.6.0
         with:
           name: wheels
           path: ./wheelhouse/*.whl
@@ -36,18 +38,18 @@ jobs:
     name: Build source distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # 4.2.2
         with:
-          submodules: "recursive"
+          persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38  # 5.4.0
         with:
           python-version: "3.10"
 
       - name: Build sdist
         run: pipx run build --sdist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # 4.6.0
         with:
           name: sdist
           path: dist/*.tar.gz
@@ -62,24 +64,30 @@ jobs:
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
       contents: write  # for action-gh-release
+      attestations: write  # for attest-build-provenance
 
     # create a new release for tagged commits
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16  # 4.1.8
         with:
           name: wheels
           path: dist
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16  # 4.1.8
         with:
           name: sdist
           path: dist
 
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@7668571508540a607bdfd90a87a560489fe372eb  # 2.1.0
+        with:
+          subject-path: 'dist/*'
+
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc  # 1.12.4
 
       - name: Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda  # 2.2.1
         with:
           files: dist/*
