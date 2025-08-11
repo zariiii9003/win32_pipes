@@ -1,5 +1,6 @@
 import multiprocessing
 import os
+import platform
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -8,6 +9,8 @@ from typing import List
 import pytest
 
 import win32_pipes
+
+IS_PYPY = platform.python_implementation() == "PyPy"
 
 
 def test_module():
@@ -115,7 +118,8 @@ def test_broken_pipe_rx():
     tx.close()
     time.sleep(0.001)
 
-    with pytest.raises(BrokenPipeError):
+    exc_type = OSError if IS_PYPY else BrokenPipeError
+    with pytest.raises(exc_type):
         rx.recv_bytes()
 
     rx.close()
@@ -127,7 +131,8 @@ def test_broken_pipe_tx():
     rx, tx = win32_pipes.Pipe(False)
     rx.close()
 
-    with pytest.raises(BrokenPipeError):
+    exc_type = OSError if IS_PYPY else BrokenPipeError
+    with pytest.raises(exc_type):
         tx.send_bytes(b"data")
 
     tx.close()

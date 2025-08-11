@@ -1,7 +1,7 @@
 repos:
 # Standard hooks
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v5.0.0
+  rev: v6.0.0
   hooks:
   - id: check-added-large-files
   - id: check-case-conflict
@@ -17,9 +17,9 @@ repos:
 
 # Check linting and style issues
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: "v0.11.2"
+  rev: "v0.12.8"
   hooks:
-    - id: ruff
+    - id: ruff-check
       args: ["--fix", "--show-fixes"]
     - id: ruff-format
       exclude: ^(docs)
@@ -42,13 +42,13 @@ repos:
 
 # Suggested hook if you add a .clang-format file
 - repo: https://github.com/pre-commit/mirrors-clang-format
-  rev: v20.1.0
+  rev: v20.1.8
   hooks:
   - id: clang-format
 
 - repo: https://github.com/woodruffw/zizmor-pre-commit
   # Zizmor version.
-  rev: v1.5.2
+  rev: v1.11.0
   hooks:
   # Run the linter.
   - id: zizmor
